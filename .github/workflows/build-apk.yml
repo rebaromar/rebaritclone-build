@@ -1,0 +1,39 @@
+name: Build rebaritclone 9.0
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - rebaritclone-v9-source.zip
+      - .github/workflows/build-apk.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project
+        run: unzip -q rebaritclone-v9-source.zip -d source
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        working-directory: source/ClonePhone
+        run: bash gradlew --no-daemon assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rebaritclone-v9.0-apk
+          path: source/ClonePhone/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
