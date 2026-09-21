@@ -1,144 +1,290 @@
 name: REBAR IT - Build and Publish
+
 'on':
   workflow_dispatch: {}
   push:
     branches:
-    - main
+      - main
     paths:
-    - ClonePhone/**
-    - release-version.txt
-    - release-notes.txt
-    - .github/workflows/build-apk.yml
+      - ClonePhone/**
+      - release-version.txt
+      - release-notes.txt
+      - .github/workflows/build-apk.yml
+
 permissions:
   contents: write
+
 concurrency:
   group: rebarit-production
   cancel-in-progress: false
+
 jobs:
   publish:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Check publishing secret
-      env:
-        UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
-      run: |
-        if [ -z "$UPDATE_ADMIN_PASSWORD" ]; then
-          echo '::error::Add UPDATE_ADMIN_PASSWORD in repository Settings > Secrets and variables > Actions.'
-          exit 1
-        fi
-    - name: One-time source migration and update support
-      run: |
-        python3 - <<'PYCODE'
-        from pathlib import Path
-        import zipfile,hashlib,base64,zlib
-        p=Path('ClonePhone')
-        if not p.exists():
-            blob=Path('rebaritclone-v9.2-source.zip').read_bytes()
-            assert hashlib.sha1(b'blob '+str(len(blob)).encode()+b'\0'+blob).hexdigest()=='2534fd4db0945fd9a3130d85a8adbf52ee0f7c9a', 'Source changed; review before migration'
-            with zipfile.ZipFile('rebaritclone-v9.2-source.zip') as z:
-                for info in z.infolist():
-                    dest=Path(info.filename)
-                    assert not dest.is_absolute() and '..' not in dest.parts and dest.parts[0]=='ClonePhone'
-                z.extractall('.')
-            java=p/'app/src/main/java/com/abdulla/clonephone'
-            (java/'OnlineUpdate.java').write_bytes(zlib.decompress(base64.b64decode('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')))
-            f=java/'MainActivity.java';s=f.read_text()
-            old='options.getMenu().add(UiText.t(290)).setOnMenuItemClickListener(i->{appDownloadPage();return true;});'
-            assert old in s
-            f.write_text(s.replace(old,'options.getMenu().add(onlineUpdate.menuTitle()).setOnMenuItemClickListener(i->{onlineUpdate.checkManually();return true;});'))
-            f=p/'app/build.gradle';f.write_text(f.read_text().replace('versionCode 35','versionCode 36').replace("versionName '9.2'","versionName '9.3'"))
-            Path('release-version.txt').write_text('9.3\n')
-            Path('release-notes.txt').write_text('Automatic update checks with Update / Later.\n')
-            Path('ClonePhone/.gitignore').write_text('.gradle/\nbuild/\n**/build/\nlocal.properties\n')
-        PYCODE
-    - name: Save editable sources to GitHub
-      run: |
-        git config user.name 'github-actions[bot]'
-        git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-        git add ClonePhone release-version.txt release-notes.txt
-        if ! git diff --cached --quiet; then
-          git commit -m 'Keep Android sources editable and enable update prompts [skip ci]'
-          git push origin HEAD:main
-        fi
-        echo "PUBLISH_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-    - uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: '17'
-    - uses: android-actions/setup-android@v3
-      with:
-        packages: platform-tools platforms;android-35 build-tools;35.0.0
-    - name: Set increasing build number
-      run: |
-        python3 - <<'PYCODE'
-        import json,re,urllib.request,os
-        from pathlib import Path
-        base='https://rebaritclone-update-admin.rebar4qwrna.workers.dev'
-        with urllib.request.urlopen(base+'/update.json',timeout=30) as r: current=json.load(r)
-        p=Path('ClonePhone/app/build.gradle');s=p.read_text()
-        previous=int(current['versionCode'])
-        code=max(previous+1,int(re.search(r'versionCode\s+(\d+)',s)[1]),100+int(os.environ['GITHUB_RUN_NUMBER']))
-        name=Path('release-version.txt').read_text().strip()
-        assert re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}',name), 'Use a version such as 9.3'
-        assert 0<code<2100000000
-        s=re.sub(r'versionCode\s+\d+', 'versionCode '+str(code),s)
-        s=re.sub(r"versionName\s+'[^']+'", "versionName '"+name+"'",s)
-        p.write_text(s)
-        Path('release.json').write_text(json.dumps(dict(versionCode=code,versionName=name,notes=Path('release-notes.txt').read_text()[:4000])))
-        PYCODE
-    - name: Build signed APK
-      working-directory: ClonePhone
-      run: bash gradlew --no-daemon assembleDebug
-    - name: Name APK
-      run: cp ClonePhone/app/build/outputs/apk/debug/app-debug.apk REBAR-IT-Clone.apk
-    - uses: actions/upload-artifact@v4
-      with:
-        name: REBAR-IT-Clone
-        path: REBAR-IT-Clone.apk
-        if-no-files-found: error
-    - name: Ensure this is still the newest commit
-      run: |
-        test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$PUBLISH_SHA" || { echo 'A newer commit exists; skipping old publication.'; exit 1; }
-    - name: Publish APK to existing update website
-      env:
-        UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
-      run: |
-        python3 - <<'PYCODE'
-        import json,os,time,urllib.request,urllib.error,urllib.parse
-        from pathlib import Path
-        base='https://rebaritclone-update-admin.rebar4qwrna.workers.dev'
-        class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self,*args,**kwargs): return None
-        opener=urllib.request.build_opener(NoRedirect())
-        secret=os.environ['UPDATE_ADMIN_PASSWORD']
-        if not secret: raise SystemExit('Add UPDATE_ADMIN_PASSWORD in GitHub Actions secrets first')
-        def request(path,data=None,kind='application/json'):
-            headers={'Content-Type':kind,'Cache-Control':'no-cache'}
-            if data is not None:headers['X-Admin-Password']=secret
-            req=urllib.request.Request(base+path,data=data,headers=headers)
-            with opener.open(req,timeout=180) as r: return json.load(r)
-        release=json.loads(Path('release.json').read_text())
-        current=request('/update.json')
-        if int(current['versionCode'])>=release['versionCode']:
-            raise SystemExit('A newer or equal build is published; run workflow again')
-        apk=Path('REBAR-IT-Clone.apk').read_bytes()
-        assert len(apk)<=20*1024*1024, 'APK exceeds upload limit'
-        upload=request('/api/upload',apk,'application/vnd.android.package-archive')
-        url=urllib.parse.urlsplit(upload['apkUrl'])
-        assert url.scheme=='https' and url.netloc==urllib.parse.urlsplit(base).netloc and url.path.startswith('/apk/')
-        assert upload['versionCode']==release['versionCode'], 'Uploaded APK version mismatch'
-        release['apkUrl']=upload['apkUrl']
-        for attempt in range(6):
-            try:
-                result=request('/api/publish',json.dumps(release).encode())
-                assert result.get('ok') is True
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check publishing secret
+        env:
+          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$UPDATE_ADMIN_PASSWORD" ]; then
+            echo '::error::Add UPDATE_ADMIN_PASSWORD in repository Settings > Secrets and variables > Actions.'
+            exit 1
+          fi
+
+      - name: One-time source migration and update support
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import zipfile,hashlib,base64,zlib
+          p=Path('ClonePhone')
+          if not p.exists():
+              blob=Path('rebaritclone-v9.2-source.zip').read_bytes()
+              assert hashlib.sha1(b'blob '+str(len(blob)).encode()+b'\0'+blob).hexdigest()=='2534fd4db0945fd9a3130d85a8adbf52ee0f7c9a', 'Source changed; review before migration'
+              with zipfile.ZipFile('rebaritclone-v9.2-source.zip') as z:
+                  for info in z.infolist():
+                      dest=Path(info.filename)
+                      assert not dest.is_absolute() and '..' not in dest.parts and dest.parts[0]=='ClonePhone'
+                  z.extractall('.')
+              java=p/'app/src/main/java/com/abdulla/clonephone'
+              (java/'OnlineUpdate.java').write_bytes(zlib.decompress(base64.b64decode('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')))
+              f=java/'MainActivity.java'
+              s=f.read_text()
+              old='options.getMenu().add(UiText.t(290)).setOnMenuItemClickListener(i->{appDownloadPage();return true;});'
+              assert old in s
+              f.write_text(s.replace(old,'options.getMenu().add(onlineUpdate.menuTitle()).setOnMenuItemClickListener(i->{onlineUpdate.checkManually();return true;});'))
+              f=p/'app/build.gradle'
+              f.write_text(f.read_text().replace('versionCode 35','versionCode 36').replace("versionName '9.2'","versionName '9.3'"))
+              Path('release-version.txt').write_text('9.3\n')
+              Path('release-notes.txt').write_text('Automatic update checks with Update / Later.\n')
+              Path('ClonePhone/.gitignore').write_text('.gradle/\nbuild/\n**/build/\nlocal.properties\n')
+          PYCODE
+
+      - name: Save editable sources to GitHub
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add ClonePhone release-version.txt release-notes.txt
+
+          if ! git diff --cached --quiet; then
+            git commit -m 'Keep Android sources editable and enable update prompts [skip ci]'
+
+            git fetch origin main
+            git rebase origin/main
+
+            for attempt in 1 2 3; do
+              if git push origin HEAD:main; then
                 break
-            except urllib.error.HTTPError as e:
-                if e.code not in (409,429,503) or attempt==5:raise SystemExit('Publishing failed: HTTP '+str(e.code))
-                time.sleep(15)
-        else: raise SystemExit('Publishing failed')
-        print('Published version '+release['versionName']+' ('+str(release['versionCode'])+')')
-        PYCODE
+              fi
+
+              if [ "$attempt" = "3" ]; then
+                echo "::error::Could not push after 3 attempts because main kept changing."
+                exit 1
+              fi
+
+              git fetch origin main
+              git rebase origin/main
+            done
+          fi
+
+          echo "PUBLISH_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
+
+      - name: Set increasing build number
+        run: |
+          python3 - <<'PYCODE'
+          import json,re,urllib.request,os
+          from pathlib import Path
+
+          base='https://rebaritclone-update-admin.rebar4qwrna.workers.dev'
+
+          with urllib.request.urlopen(base+'/update.json',timeout=30) as r:
+              current=json.load(r)
+
+          p=Path('ClonePhone/app/build.gradle')
+          s=p.read_text()
+
+          previous=int(current['versionCode'])
+
+          code=max(
+              previous+1,
+              int(re.search(r'versionCode\s+(\d+)',s)[1]),
+              100+int(os.environ['GITHUB_RUN_NUMBER'])
+          )
+
+          name=Path('release-version.txt').read_text().strip()
+
+          assert re.fullmatch(
+              r'[0-9]+(?:\.[0-9]+){1,3}',
+              name
+          ), 'Use a version such as 9.3'
+
+          assert 0 < code < 2100000000
+
+          s=re.sub(
+              r'versionCode\s+\d+',
+              'versionCode '+str(code),
+              s
+          )
+
+          s=re.sub(
+              r"versionName\s+'[^']+'",
+              "versionName '"+name+"'",
+              s
+          )
+
+          p.write_text(s)
+
+          Path('release.json').write_text(
+              json.dumps(
+                  dict(
+                      versionCode=code,
+                      versionName=name,
+                      notes=Path('release-notes.txt').read_text()[:4000]
+                  )
+              )
+          )
+          PYCODE
+
+      - name: Build signed APK
+        working-directory: ClonePhone
+        run: bash gradlew --no-daemon assembleDebug
+
+      - name: Name APK
+        run: |
+          cp ClonePhone/app/build/outputs/apk/debug/app-debug.apk REBAR-IT-Clone.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: REBAR-IT-Clone
+          path: REBAR-IT-Clone.apk
+          if-no-files-found: error
+
+      - name: Ensure this is still the newest commit
+        run: |
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$PUBLISH_SHA" || {
+            echo 'A newer commit exists; skipping old publication.'
+            exit 1
+          }
+
+      - name: Publish APK to existing update website
+        env:
+          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+        run: |
+          python3 - <<'PYCODE'
+          import json,os,time,urllib.request,urllib.error,urllib.parse
+          from pathlib import Path
+
+          base='https://rebaritclone-update-admin.rebar4qwrna.workers.dev'
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs):
+                  return None
+
+          opener=urllib.request.build_opener(NoRedirect())
+
+          secret=os.environ['UPDATE_ADMIN_PASSWORD']
+
+          if not secret:
+              raise SystemExit(
+                  'Add UPDATE_ADMIN_PASSWORD in GitHub Actions secrets first'
+              )
+
+          def request(path,data=None,kind='application/json'):
+              headers={
+                  'Content-Type':kind,
+                  'Cache-Control':'no-cache'
+              }
+
+              if data is not None:
+                  headers['X-Admin-Password']=secret
+
+              req=urllib.request.Request(
+                  base+path,
+                  data=data,
+                  headers=headers
+              )
+
+              with opener.open(req,timeout=180) as r:
+                  return json.load(r)
+
+          release=json.loads(
+              Path('release.json').read_text()
+          )
+
+          current=request('/update.json')
+
+          if int(current['versionCode']) >= release['versionCode']:
+              raise SystemExit(
+                  'A newer or equal build is published; run workflow again'
+              )
+
+          apk=Path('REBAR-IT-Clone.apk').read_bytes()
+
+          assert len(apk) <= 20*1024*1024, \
+              'APK exceeds upload limit'
+
+          upload=request(
+              '/api/upload',
+              apk,
+              'application/vnd.android.package-archive'
+          )
+
+          url=urllib.parse.urlsplit(upload['apkUrl'])
+
+          assert (
+              url.scheme=='https'
+              and url.netloc==urllib.parse.urlsplit(base).netloc
+              and url.path.startswith('/apk/')
+          )
+
+          assert (
+              upload['versionCode']==release['versionCode']
+          ), 'Uploaded APK version mismatch'
+
+          release['apkUrl']=upload['apkUrl']
+
+          for attempt in range(6):
+              try:
+                  result=request(
+                      '/api/publish',
+                      json.dumps(release).encode()
+                  )
+
+                  assert result.get('ok') is True
+                  break
+
+              except urllib.error.HTTPError as e:
+                  if e.code not in (409,429,503) or attempt==5:
+                      raise SystemExit(
+                          'Publishing failed: HTTP '+str(e.code)
+                      )
+
+                  time.sleep(15)
+
+          else:
+              raise SystemExit('Publishing failed')
+
+          print(
+              'Published version '
+              +release['versionName']
+              +' ('
+              +str(release['versionCode'])
+              +')'
+          )
+          PYCODE
