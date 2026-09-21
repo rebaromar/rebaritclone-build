@@ -3,33 +3,57 @@ name: Build REBAR IT Clone 9.3
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - 'rebaritclone-v9.3-source.zip'
+      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Extract project
-        run: unzip -q rebaritclone-v9.3-source.zip -d source
-      - uses: actions/setup-java@v4
+        run: |
+          rm -rf source
+          mkdir -p source
+          unzip -q rebaritclone-v9.3-source.zip -d source
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Make Gradle executable
+        run: chmod +x source/ClonePhone/gradlew
+
       - name: Build APK
         working-directory: source/ClonePhone
-        run: bash gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleDebug
+
       - name: Name APK
-        run: cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk REBAR-IT-Clone-9.3.apk
-      - uses: actions/upload-artifact@v4
+        run: |
+          cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
+          REBAR-IT-Clone-9.3.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: REBAR-IT-Clone-9.3
           path: REBAR-IT-Clone-9.3.apk
           if-no-files-found: error
+          retention-days: 30
