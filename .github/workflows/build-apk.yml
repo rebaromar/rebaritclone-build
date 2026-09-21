@@ -1,4 +1,4 @@
-name: Build REBAR IT Clone 9.1
+name: Build REBAR IT Clone 9.2
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Extract project
-        run: unzip -q rebaritclone-v9.1-source.zip -d source
+        run: unzip -q rebaritclone-v9.2-source.zip -d source
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,9 +27,9 @@ jobs:
         working-directory: source/ClonePhone
         run: bash gradlew --no-daemon assembleDebug
       - name: Name APK
-        run: cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk REBAR-IT-Clone-9.1.apk
+        run: cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk REBAR-IT-Clone-9.2.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: REBAR-IT-Clone-9.1
-          path: REBAR-IT-Clone-9.1.apk
+          name: REBAR-IT-Clone-9.2
+          path: REBAR-IT-Clone-9.2.apk
           if-no-files-found: error
