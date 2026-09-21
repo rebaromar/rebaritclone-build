@@ -1,0 +1,312 @@
+0|8.4 • Offline|8.4 • بدون إنترنت
+1|1  Select     •     2  Connect     •     3  Transfer|١  الاختيار     •     ٢  الاتصال     •     ٣  النقل
+2|OK|حسنًا
+3|Transfer your data|انقل بياناتك
+4|Move from your old phone to your new phone in a few simple steps.|انقل بياناتك من هاتفك القديم إلى الجديد بخطوات بسيطة.
+5|Old phone|الهاتف القديم
+6|Send data from this phone|إرسال البيانات من هذا الهاتف
+7|New phone|الهاتف الجديد
+8|Receive data on this phone|استقبال البيانات على هذا الهاتف
+9|Hotspot or cable • No SIM or internet needed|نقطة اتصال أو كابل • دون شريحة أو إنترنت
+10|Receive via USB-C|الاستقبال عبر USB-C
+11|What can I transfer?|ما الذي يمكن نقله؟
+12|Supported data|البيانات المدعومة
+13|Photos, videos, audio, files, apps and contacts as VCF. SMS and call history are transferred as backup files, not restored into Phone or Messages.\n\nPrivate app data, WhatsApp data, accounts and settings are not transferred. Update both phones.|الصور والفيديو والصوت والملفات والتطبيقات وجهات الاتصال بصيغة VCF. تُنقل الرسائل وسجل المكالمات كملفات احتياطية ولا تُستعاد داخل الهاتف أو الرسائل.\n\nلا تُنقل بيانات التطبيقات الخاصة أو واتساب أو الحسابات أو الإعدادات. حدّث التطبيق على الهاتفين.
+14|What would you like to send?|ماذا تريد أن ترسل؟
+15|Choose a category or select files manually.|اختر فئة أو حدد الملفات يدويًا.
+16|Photos|الصور
+17|All photos you have allowed access to|جميع الصور التي سمحت بالوصول إليها
+18|Videos|الفيديو
+19|Videos on this phone|مقاطع الفيديو على هذا الهاتف
+20|Audio and music|الصوت والموسيقى
+21|Audio files|الملفات الصوتية
+22|Apps (APK)|التطبيقات (APK)
+23|Select app APKs to send and install|اختر APK للتطبيقات لإرسالها وتثبيتها
+24|Contacts|جهات الاتصال
+25|Names and numbers in a VCF file|الأسماء والأرقام في ملف VCF
+26|Files|الملفات
+27|Select manually|حدد يدويًا
+28|Continue  →|متابعة  ←
+29|Back|رجوع
+30|Tap SMS or recent calls to select all available records. Tap again to clear. Apps and contacts offer individual selection.|اضغط على الرسائل أو المكالمات الأخيرة لتحديد كل السجلات المتاحة. اضغط مجددًا لإلغاء التحديد. يمكن اختيار التطبيقات وجهات الاتصال بشكل فردي.
+31| files • | ملفات • 
+32| + unknown size| + حجم غير معروف
+33|Loading app list|جارٍ تحميل قائمة التطبيقات
+34|No suitable apps found.|لم يتم العثور على تطبيقات مناسبة.
+35|Select apps — installation files only|حدد التطبيقات — ملفات التثبيت فقط
+36|Add|إضافة
+37|App list|قائمة التطبيقات
+38|Preparing selected apps|جارٍ تجهيز التطبيقات المحددة
+39|Some apps could not be prepared|تعذر تجهيز بعض التطبيقات
+40|These app files were unavailable, or storage was insufficient:\n|ملفات هذه التطبيقات غير متاحة أو مساحة التخزين غير كافية:\n
+41|Permission required|الإذن مطلوب
+42|Automatic hotspot setup needs Wi-Fi permission. You can also turn on the hotspot manually.|يتطلب إعداد نقطة الاتصال تلقائيًا إذن Wi-Fi. يمكنك تشغيلها يدويًا أيضًا.
+43|You can choose a QR image or paste the pairing code.|يمكنك اختيار صورة QR أو لصق رمز الاقتران.
+44|Permission denied. You can use Files instead.|لم يُمنح الإذن. يمكنك استخدام الملفات بدلًا من ذلك.
+45|Please wait…|يرجى الانتظار…
+46|Preparing data|جارٍ تجهيز البيانات
+47|No accessible data found.|لم يتم العثور على بيانات يمكن الوصول إليها.
+48|Only the photos and videos you allowed were added.|أُضيفت فقط الصور ومقاطع الفيديو التي سمحت بالوصول إليها.
+49|Could not prepare data|تعذر تجهيز البيانات
+50|Select some data first.|حدد البيانات أولًا.
+51|Send up to 10,000 files per transfer.|يمكن إرسال ما يصل إلى 10,000 ملف في كل عملية نقل.
+52|Connect to the new phone|اتصل بالهاتف الجديد
+53|1. Tap New phone on the receiving phone.\n2. Scan its QR code.\n3. Accept the Android connection request.\n\nNo SIM, mobile data or internet is needed.|١. اضغط على الهاتف الجديد في هاتف الاستقبال.\n٢. امسح رمز QR الظاهر عليه.\n٣. وافق على طلب الاتصال من أندرويد.\n\nلا تحتاج إلى شريحة أو بيانات هاتف أو إنترنت.
+54|Scan QR — Wi-Fi|مسح QR — Wi-Fi
+55|Send via USB-C cable|الإرسال عبر كابل USB-C
+56|Choose QR image|اختيار صورة QR
+57|Back to data selection|العودة لاختيار البيانات
+58|Alternative: paste pairing code|طريقة بديلة: لصق رمز الاقتران
+59|Paste pairing code|الصق رمز الاقتران
+60|Connect|اتصال
+61|Cancel|إلغاء
+62|Invalid QR code|رمز QR غير صالح
+63|Scan the QR code inside rebaritclone on the new phone. Update the app on both phones.|امسح رمز QR داخل rebaritclone على الهاتف الجديد. حدّث التطبيق على الهاتفين.
+64|Connecting to hotspot|جارٍ الاتصال بنقطة الاتصال
+65|Accept the Android connection request. This network does not provide or require internet.|وافق على طلب الاتصال من أندرويد. هذه الشبكة لا توفر الإنترنت ولا تحتاج إليه.
+66|Connect manually|الاتصال يدويًا
+67|Join the hotspot|اتصل بنقطة الاتصال
+68|In Wi-Fi settings, select the new phone's hotspot. Stay connected if Android says No internet.|في إعدادات Wi-Fi، اختر نقطة اتصال الهاتف الجديد. ابقَ متصلًا إذا ظهرت عبارة لا يوجد إنترنت.
+69|Hotspot name: |اسم نقطة الاتصال: 
+70|Password: |كلمة المرور: 
+71|Open Wi-Fi settings|فتح إعدادات Wi-Fi
+72|Connected — Send|تم الاتصال — إرسال
+73|Connect to the new phone's hotspot first.|اتصل بنقطة اتصال الهاتف الجديد أولًا.
+74|Creating hotspot|جارٍ إنشاء نقطة الاتصال
+75|A local hotspot for offline transfer.|نقطة اتصال محلية للنقل دون إنترنت.
+76|5 GHz unavailable|تعذر تشغيل 5 GHz
+77|Hotspot unavailable|تعذر تشغيل نقطة الاتصال
+78|Retry or choose another method. Both phones must support 5 GHz.|أعد المحاولة أو اختر طريقة أخرى. يجب أن يدعم الهاتفان نطاق 5 GHz.
+79|Retry|إعادة المحاولة
+80|Continue with a standard hotspot|المتابعة بنقطة اتصال عادية
+81|Set up a 5 GHz hotspot manually|إعداد نقطة اتصال 5 GHz يدويًا
+82|Receive via USB-C|الاستقبال عبر USB-C
+83|Turn on the hotspot manually|شغّل نقطة الاتصال يدويًا
+84|Automatic hotspot setup failed on this phone. Enable it in Settings; mobile data is not needed. Older Android versions may also require Location to be on.|تعذر إعداد نقطة الاتصال تلقائيًا على هذا الهاتف. شغّلها من الإعدادات؛ لا تحتاج إلى بيانات الهاتف. قد تتطلب إصدارات أندرويد القديمة تشغيل الموقع أيضًا.
+85|Automatic connection error: |سبب فشل الاتصال التلقائي: 
+86|Hotspot settings|إعدادات نقطة الاتصال
+87|Enabled — Show QR|تم التشغيل — عرض QR
+88|Connect the old phone to this hotspot using Wi-Fi, then scan the QR code. For higher speed, choose 5 GHz if both phones support it.|اتصل بهذه النقطة من الهاتف القديم عبر Wi-Fi، ثم امسح QR. لسرعة أعلى، اختر 5 GHz إذا كان الهاتفان يدعمانه.
+89|Reading QR code|جارٍ قراءة رمز QR
+90|Could not read QR code|تعذرت قراءة رمز QR
+91|Choose a clear image of the QR code shown in the app.|اختر صورة واضحة لرمز QR الظاهر في التطبيق.
+92|Transfer by cable|النقل بالكابل
+93|Connect both phones with a USB-C cable that supports data transfer.|صل الهاتفين بكابل USB-C يدعم نقل البيانات.
+94|On the new phone, select USB controlled by → This device, or enable OTG. On the old phone, choose Send via USB-C cable.|على الهاتف الجديد، اختر التحكم في USB ← هذا الجهاز أو شغّل OTG. على الهاتف القديم، اختر الإرسال عبر كابل USB-C.
+95|On the new phone, choose Receive via USB-C cable. Accept the USB permission requests on both phones.|على الهاتف الجديد، اختر الاستقبال عبر كابل USB-C. وافق على طلبات إذن USB على الهاتفين.
+96|Experimental • Requires USB Host and Accessory support. USB debugging is not needed. If no device is found, choose USB / File transfer on the old phone and retry.|تجريبي • يتطلب دعم USB Host وAccessory. لا يحتاج إلى تصحيح أخطاء USB. إذا لم يُعثر على الجهاز، اختر USB / نقل الملفات على الهاتف القديم وأعد المحاولة.
+97|Waiting for cable and USB permission…|بانتظار الكابل وإذن USB…
+98|USB connection failed|فشل اتصال USB
+99|Transfer via hotspot|النقل عبر نقطة الاتصال
+100|No SIM or internet needed. The old phone connects to this phone's hotspot.|لا تحتاج إلى شريحة أو إنترنت. يتصل الهاتف القديم بنقطة اتصال هذا الهاتف.
+101|Start hotspot|تشغيل نقطة الاتصال
+102|Receive via USB-C cable|الاستقبال عبر كابل USB-C
+103|Set up hotspot manually|إعداد نقطة الاتصال يدويًا
+104|You can transfer files with mobile data turned off or without a SIM.|يمكنك نقل الملفات مع إيقاف بيانات الهاتف أو دون شريحة.
+105|Scan this QR code|امسح رمز QR هذا
+106|Tap Scan QR on the old phone.|اضغط على مسح QR في الهاتف القديم.
+107|QR code to connect the old phone|رمز QR لربط الهاتف القديم
+108|Waiting for the old phone…|بانتظار الهاتف القديم…
+109|Ultra Fast / Wi-Fi Direct|فائق السرعة / Wi-Fi Direct
+110|\nThe strongest band supported by both phones and Android is chosen automatically.|\nيُختار تلقائياً أقوى نطاق يدعمه الهاتفان ونظام Android.
+111|Stop|إيقاف
+112|Copy pairing code|نسخ رمز الاقتران
+113|Copied. Use it only on your own phone.|تم النسخ. استخدمه على هاتفك فقط.
+114|Sending your data|جارٍ إرسال بياناتك
+115|Receiving your data|جارٍ استقبال بياناتك
+116|Keep both apps open until the transfer finishes.|أبقِ التطبيق مفتوحًا على الهاتفين حتى يكتمل النقل.
+117|USB-C • Direct transfer|USB-C • نقل مباشر
+118|0%|٠٪
+119|Connecting…|جارٍ الاتصال…
+120|Preparing file counts and sizes…|جارٍ تجهيز أعداد الملفات وأحجامها…
+121|Stop transfer|إيقاف النقل
+122|Stop this transfer?|هل تريد إيقاف النقل؟
+123|Completed files will be kept.|ستبقى الملفات المكتملة محفوظة.
+124|Continue|متابعة
+125|Done!|تم!
+126|Transfer incomplete|لم يكتمل النقل
+127| files completed| ملفات مكتملة
+128|Original files on the old phone are not deleted.|لا تُحذف الملفات الأصلية من الهاتف القديم.
+129|Install received apps|تثبيت التطبيقات المستلمة
+130|Photos and videos are in Gallery; other files are in Downloads / rebaritclone.|الصور والفيديو في المعرض؛ والملفات الأخرى في Downloads / rebaritclone.
+131|Files were saved in the selected folder.|حُفظت الملفات في المجلد المحدد.
+132|Import contacts|استيراد جهات الاتصال
+133|Back to home|العودة للرئيسية
+134|Resume interrupted transfer|استئناف النقل المنقطع
+135|Keep the same files selected. If the network disconnected, scan a new QR code. Do not close the apps.|أبقِ الملفات نفسها محددة. إذا انقطعت الشبكة، امسح رمز QR جديدًا. لا تغلق التطبيقين.
+136|In Contacts, choose Import and open the received contacts.vcf file.|في تطبيق جهات الاتصال، اختر استيراد وافتح ملف contacts.vcf المستلم.
+137|0 seconds|٠ ثانية
+138|Estimating…|جارٍ التقدير…
+139| h and | ساعة و
+140| min| دقيقة
+141| min and | دقيقة و
+142| sec| ثانية
+143| + unknown| + غير معروف
+144|Total size: |الحجم الإجمالي: 
+145|\nTransferred: |\nتم نقل: 
+146|\nRemaining: |\nالمتبقي: 
+147|Full size is unknown|الحجم الكامل غير معروف
+148|\n\nFiles: |\n\nالملفات: 
+149| done • | مكتمل • 
+150| remaining / | متبقٍ / 
+151|\nPhotos: |\nالصور: 
+152|\nVideos: |\nالفيديو: 
+153|\nApps: |\nالتطبيقات: 
+154|\nOther files: |\nالملفات الأخرى: 
+155|\n\nAverage speed: |\n\nمتوسط السرعة: 
+156|\nEstimated time left: |\nالوقت المتبقي المقدر: 
+157|Verifying and saving file…|جارٍ التحقق من الملف وحفظه…
+158|%|٪
+159|Your data was transferred successfully.|نُقلت بياناتك بنجاح.
+160|Transfer stopped at your request.|توقف النقل بناءً على طلبك.
+161|The source file changed. Resume was stopped to protect your data.|تغيّر الملف الأصلي. أُوقف الاستئناف لحماية بياناتك.
+162|Data access permission was denied. Select the data again.|لم يُمنح إذن الوصول إلى البيانات. حدد البيانات مجددًا.
+163|Too many files. Send smaller batches using Files. Limit: 10,000 files per transfer.|عدد الملفات كبير جدًا. أرسلها على دفعات من قسم الملفات. الحد: 10,000 ملف لكل عملية نقل.
+164|Receiving was declined or the approval request timed out.|رُفض الاستقبال أو انتهت مهلة الموافقة.
+165|USB transfer stopped. Check the data cable, USB permission and free space. Completed files are kept.|توقف نقل USB. تحقق من كابل البيانات وإذن USB والمساحة المتاحة. تبقى الملفات المكتملة محفوظة.
+166|Timed out. Connect both phones to the same Wi-Fi and scan a new QR code.|انتهت المهلة. صل الهاتفين بشبكة Wi-Fi نفسها وامسح QR جديدًا.
+167|Could not connect. Use the same Wi-Fi, or connect one phone to the other's hotspot. Turn off VPN and scan a new QR code.|تعذر الاتصال. استخدم شبكة Wi-Fi نفسها أو اتصل بنقطة اتصال الهاتف الآخر. أوقف VPN وامسح QR جديدًا.
+168|The pairing code is old or incorrect. Generate a new QR code on the new phone.|رمز الاقتران قديم أو غير صحيح. أنشئ رمز QR جديدًا على الهاتف الجديد.
+169|Connection lost. Keep both apps open and tap Resume interrupted transfer.|انقطع الاتصال. أبقِ التطبيقين مفتوحين واضغط على استئناف النقل المنقطع.
+170|Transfer stopped. Check free space, file permissions and Wi-Fi. Completed files are kept.|توقف النقل. تحقق من المساحة وإذن الملفات وWi-Fi. تبقى الملفات المكتملة محفوظة.
+171|Stopping…|جارٍ الإيقاف…
+172|Connection lost; trying to resume…|انقطع الاتصال؛ جارٍ محاولة الاستئناف…
+173|Waiting for approval on the new phone…|بانتظار الموافقة على الهاتف الجديد…
+174|Wi-Fi required|يلزم اتصال Wi-Fi
+175|Connect to Wi-Fi or enable the hotspot, then tap Show QR again.|اتصل بشبكة Wi-Fi أو شغّل نقطة الاتصال، ثم اضغط على عرض QR مجددًا.
+176|Preparing QR code|جارٍ تجهيز رمز QR
+177|Connection lost; waiting to resume…|انقطع الاتصال؛ بانتظار الاستئناف…
+178| files\n| ملفات\n
+179| + files with unknown size| + ملفات بحجم غير معروف
+180|\nReceive this data on this phone?|\nهل تريد استقبال هذه البيانات على هذا الهاتف؟
+181|\n\nApp installation starts after receiving. You approve the Android Install prompt.|\n\nيبدأ تثبيت التطبيقات بعد الاستقبال. أنت توافق على نافذة التثبيت من أندرويد.
+182|Old phone connected|اتصل الهاتف القديم
+183|Receive|استقبال
+184|Decline|رفض
+185|Enable Wi-Fi and the required settings to start.|شغّل Wi-Fi والإعدادات المطلوبة للبدء.
+186|Preparing files|جارٍ تجهيز الملفات
+187|Could not read file|تعذرت قراءة الملف
+188|Stop this operation?|هل تريد إيقاف هذه العملية؟
+189|Yes|نعم
+190|No|لا
+191|Two phones transferring data|هاتفان لنقل البيانات
+192|USB permission denied.|لم يُمنح إذن USB.
+193|The new phone does not support USB Host/OTG.|الهاتف الجديد لا يدعم USB Host/OTG.
+194|No USB device found. Use a data cable and select USB controlled by / This device on the new phone, or enable OTG.|لم يُعثر على جهاز USB. استخدم كابل بيانات واختر التحكم في USB / هذا الجهاز على الهاتف الجديد، أو شغّل OTG.
+195|USB setup failed: |فشل إعداد USB: 
+196|USB Accessory is unsupported or permission was denied. Try USB controlled by / This device on the new phone.|USB Accessory غير مدعوم أو لم يُمنح الإذن. جرّب التحكم في USB / هذا الجهاز على الهاتف الجديد.
+197|Approve Install / Update in the Android prompt.|وافق على تثبيت / تحديث في نافذة أندرويد.
+198|Install request unavailable.|طلب التثبيت غير متاح.
+199|Installed|تم التثبيت
+200|Continue / Retry|متابعة / إعادة المحاولة
+201|Skip this app|تخطي هذا التطبيق
+202|Skipped at your request|تم التخطي بناءً على طلبك
+203|Installation files only; app accounts and private data are not transferred. Some apps may be incompatible with the new phone.|ملفات التثبيت فقط؛ لا تُنقل حسابات التطبيقات أو بياناتها الخاصة. قد لا تتوافق بعض التطبيقات مع الهاتف الجديد.
+204|Installation paused. Tap Continue to resume.|توقف التثبيت. اضغط على متابعة للاستئناف.
+205|Installation list finished.|انتهت قائمة التثبيت.
+206| apps installed • | تطبيقات مثبّتة • 
+207| apps skipped| تطبيقات تم تخطيها
+208|Could not open the Install prompt.|تعذر فتح نافذة التثبيت.
+209|Enable Allow from this source for rebaritclone, then come back.|فعّل السماح من هذا المصدر لتطبيق rebaritclone، ثم ارجع.
+210|Could not open installation settings.|تعذر فتح إعدادات التثبيت.
+211|Preparing app for installation…|جارٍ تجهيز التطبيق للتثبيت…
+212|App could not be installed: |تعذر تثبيت التطبيق: 
+213|Install permission denied. You can retry later.|لم يُمنح إذن التثبيت. يمكنك المحاولة لاحقًا.
+214|Installation cancelled.|أُلغي التثبيت.
+215|Not enough free space.|مساحة التخزين غير كافية.
+216|The app conflicts with the installed version. No app will be uninstalled automatically.|يتعارض التطبيق مع الإصدار المثبّت. لن يُحذف أي تطبيق تلقائيًا.
+217|This app is incompatible with this Android version or phone.|هذا التطبيق غير متوافق مع إصدار أندرويد أو هذا الهاتف.
+218|Android blocked installation.|حظر أندرويد التثبيت.
+219|Installation failed.|فشل التثبيت.
+220|Stop installation? Received files will be kept.|هل تريد إيقاف التثبيت؟ ستبقى الملفات المستلمة محفوظة.
+221|Point the camera at the new phone's QR code|وجّه الكاميرا إلى رمز QR على الهاتف الجديد
+222|The camera is used only to scan QR codes|تُستخدم الكاميرا لمسح رموز QR فقط
+223|Could not open camera. Go back and choose a QR image.|تعذر فتح الكاميرا. ارجع واختر صورة QR.
+224|Local hotspot • Android did not report the band|نقطة اتصال محلية • لم يحدد أندرويد النطاق
+225|Band information for this connection is unavailable|معلومات نطاق هذا الاتصال غير متاحة
+226|2.4 GHz band. Try 5 GHz for higher speed.|نطاق 2.4 GHz. جرّب 5 GHz لسرعة أعلى.
+227|Link speed is not the actual file transfer speed.|سرعة الارتباط ليست سرعة نقل الملفات الفعلية.
+228|Wi-Fi band information unavailable|معلومات نطاق Wi-Fi غير متاحة
+229|Recent calls|سجل المكالمات
+230|SMS messages|رسائل SMS
+231|Transfers a backup file only; it is not restored into Phone or Messages. WhatsApp, RCS and MMS are not included.|يُنقل ملف نسخة احتياطية فقط؛ ولا يُستعاد داخل الهاتف أو الرسائل. لا يشمل واتساب أو RCS أو MMS.
+232|Select individual contacts — VCF|حدد جهات الاتصال — VCF
+233|One tap: select all available calls — backup file|ضغطة واحدة: تحديد كل المكالمات المتاحة — ملف نسخ احتياطي
+234|One tap: select all available SMS — backup|نقرة واحدة: تحديد كل الرسائل المتاحة — نسخة احتياطية
+235|Read permission was not granted. Android or the app installer may restrict SMS and call-log access. You can select an existing backup through Files.|لم يُمنح إذن القراءة. قد يقيّد أندرويد أو مثبّت التطبيق الوصول إلى الرسائل وسجل المكالمات. يمكنك اختيار نسخة احتياطية موجودة من الملفات.
+236|Search name, number or text|البحث بالاسم أو الرقم أو النص
+237|Select all shown|تحديد كل النتائج المعروضة
+238| selected| محدد
+239|Showing at most 5,000 records. Calls and SMS show the most recent records.|تُعرض 5,000 سجلات كحد أقصى. للمكالمات والرسائل، تُعرض أحدث السجلات.
+240|Incoming|واردة
+241|Outgoing|صادرة
+242|Missed|فائتة
+243|Other|أخرى
+244|Some records could not be read, changed, or storage is insufficient. Your previous selection was kept; retry.|تعذرت قراءة بعض السجلات أو تغيرت أو المساحة غير كافية. احتُفظ باختيارك السابق؛ أعد المحاولة.
+245|Clear selection|إلغاء تحديد الكل
+246|App permissions|أذونات التطبيق
+247|Android prompts appear one at a time. Tap Allow for the features you want to use.|تظهر طلبات أندرويد بالتتابع. اضغط سماح للميزات التي تريد استخدامها.
+248|For all photos, choose Allow all. Choose documents in the system file picker; protected system files are unavailable. Allow dialogs do not need Display over other apps.|لكل الصور اختر السماح بالكل. اختر المستندات من منتقي ملفات النظام؛ ملفات النظام المحمية غير متاحة. نوافذ السماح لا تحتاج إذن الظهور فوق التطبيقات.
+249|Some permissions are missing or only selected photos are allowed. Continue with available features or change app settings. Android may restrict SMS and call-log access.|بعض الأذونات غير ممنوحة أو يسمح بصور محددة فقط. تابع بالميزات المتاحة أو غيّر إعدادات التطبيق. قد يقيّد أندرويد الوصول إلى الرسائل وسجل المكالمات.
+250|Open app settings|فتح إعدادات التطبيق
+251|File transfers|نقل الملفات
+252|Wi-Fi Direct stayed busy; automatically tried the normal hotspot route. 5 GHz is not guaranteed.|بقي Wi-Fi Direct مشغولاً؛ جُرّبت نقطة الاتصال العادية تلقائياً. نطاق 5 GHz غير مضمون.
+253|Photos transferred: |الصور المنقولة: 
+254|Videos transferred: |الفيديوهات المنقولة: 
+255|Transfer duration (hh:mm:ss): |مدة النقل (ساعة:دقيقة:ثانية): 
+256|Show files|عرض الملفات
+257|No suitable app is available to open this file, or access was denied. The file is saved in the receive location.|لا يتوفر تطبيق مناسب لفتح هذا الملف أو تم رفض الوصول. الملف محفوظ في موقع الاستلام.
+258|Offline • Phone to phone|بدون إنترنت • من هاتف إلى هاتف
+259|Transfer your data with ease|انقل بياناتك بسهولة
+260|Move data from your old phone to your new phone|انقل بياناتك من هاتفك القديم إلى الجديد
+261|File transfer|نقل الملفات
+262|Options|الخيارات
+263|Choose photos, videos, audio, apps and files to send|اختر الصور والفيديو والصوت والتطبيقات والملفات لإرسالها
+264|Phone to phone|من هاتف إلى هاتف
+265|Photos and videos|الصور والفيديوهات
+266|All items|كل العناصر
+267|Showing up to 10,000 files.|يتم عرض ما يصل إلى 10000 ملف.
+268|Offline|بدون إنترنت
+269|Select|اختيار
+270|Connect|اتصال
+271|Transfer|نقل
+272|Selected|محدد
+273|Connect both phones with a USB-C data cable.|صل الهاتفين بكابل USB-C لنقل البيانات.
+274|1  Use a data cable; a charge-only cable will not work.|١  استخدم كابل بيانات؛ كابل الشحن فقط لا يكفي.
+275|2  Choose Send via USB-C on the old phone; select data after connecting.|٢  اختر الإرسال عبر USB-C على الهاتف القديم؛ حدد البيانات بعد الاتصال.
+276|3  Start here and accept the USB permission requests.|٣  اضغط ابدأ هنا ووافق على طلبات إذن USB.
+277|Start USB receiving|بدء الاستقبال عبر USB
+278|Connect to the new phone first, then select your data.|اتصل بالهاتف الجديد أولاً، ثم اختر بياناتك.
+279|Connected|تم الاتصال
+280|Select data on the old phone and start sending.|اختر البيانات على الهاتف القديم وابدأ الإرسال.
+281|Data is ready to receive|البيانات جاهزة للاستقبال
+282|The old phone is connected|الهاتف القديم متصل
+283|more files|ملفات أخرى
+284|Photos and videos|الصور والفيديو
+285|Files, APKs and audio|الملفات وAPK والصوت
+286|Contacts and messages|جهات الاتصال والرسائل
+287|This phone supports Wi-Fi 6/6E; Wi-Fi Direct automatically chooses the strongest permitted band.|يدعم الهاتف Wi-Fi 6/6E؛ يختار Wi-Fi Direct تلقائياً أقوى نطاق مسموح.
+288|This phone supports 5 GHz; Wi-Fi Direct automatically chooses an available band.|يدعم الهاتف 5 GHz؛ يختار Wi-Fi Direct تلقائياً نطاقاً متاحاً.
+289|No fast Wi-Fi band is reported; the system uses an available band.|لا يظهر دعم لنطاق Wi-Fi سريع؛ يستخدم النظام نطاقاً متاحاً.
+290|Download app|تنزيل التطبيق
+291|Scan the QR code or open the link. All versions and the newest APK are available on the same page.|امسح رمز QR أو افتح الرابط. جميع الإصدارات وأحدث APK متاحة في الصفحة نفسها.
+292|rebaritclone download QR code|رمز QR لتنزيل rebaritclone
+293|Open download page|فتح صفحة التنزيل
+294|Copy link|نسخ الرابط
+295|Current version: |الإصدار الحالي: 
+296|Download link copied.|تم نسخ رابط التنزيل.
+297|Could not open the download page.|تعذر فتح صفحة التنزيل.
+298|New update available|يتوفر تحديث جديد
+299|Improvements and performance enhancements.|تحسينات وتعزيزات للأداء.
+300|New version: |الإصدار الجديد: 
+301|Download update|تنزيل التحديث
+302|Later|لاحقاً
+303|Search local files|بحث في الملفات المحلية
+304|Documents|المستندات
+305|APK files|ملفات APK
+306|Other files|ملفات أخرى
+307|Downloads|التنزيلات
+308|Selected: |المحدد: 
+309|Send selected files|إرسال الملفات المحددة
+310|Share app via Bluetooth or another app|مشاركة التطبيق عبر البلوتوث أو تطبيق آخر
+311|Could not open the app sharing menu.|تعذر فتح قائمة مشاركة التطبيق.

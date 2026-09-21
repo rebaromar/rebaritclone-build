@@ -1,0 +1,63 @@
+rebaritclone 7.8-test / versionCode 19
+PASS: full Android Java compilation, resources, DEX, APK v2/v3 signatures
+PASS: 2 MiB encrypted duplex transfer, EOF records, invalid code, wrong key, ciphertext tampering rejection
+PASS: private-address-only pairing validation
+PASS: QR decoding via image and camera luminance paths, 2 sizes, 4 rotations
+PASS: 2000-file Unicode manifest larger than old frame limit; disconnect detection
+NOT RUN: real Android installation, native UI rendering, physical camera, two-device Wi-Fi/hotspot, MediaStore/SAF, Contacts import and OEM lifecycle behavior
+PASS: 64 MiB + 37-byte buffered encrypted stream, complete length and digest verified
+PASS: hotspot QR SSID/password Unicode roundtrip and invalid credential rejection
+NOT RUN: physical local-only hotspot, system Wi-Fi consent, no-SIM two-device transfer or real-phone throughput
+PASS: simulated USB bootstrap, 1 MiB encrypted records, fragmented reads, tail/digest/final ACK and invalid-header rejection
+NOT RUN: physical USB-C/AOA, permission/re-enumeration, Wi-Fi Direct group creation, 5 GHz selection or before/after phone throughput
+
+Version 5: permission-to-hotspot flow and authoritative band reporting implemented; no measured speed increase claimed. Existing protocol tests above describe unchanged transport coverage. New physical Android flow and 5 GHz device tests NOT RUN.
+
+Version 6 PASS: production encrypted mid-file resume at 1 MiB, SHA-256 prefix/full validation, 37-byte tail, lost ACK deduplication, corrupted-prefix reset/retry and zero-byte file.
+Version 6 PASS: ProtocolTest and UsbSessionTest with CP04 transport.
+Version 6 NOT RUN: physical Android automatic reconnect, QR mode switch lifecycle, low-storage and Activity/process death behavior. Resume state is Activity-scoped, not persistent across app restarts.
+
+Version 7 PASS: AppBundle real signed APK and split byte preservation, base-only, invalid/missing/duplicate/traversal/extra/count/truncated inputs and incomplete sink rejection.
+Version 7 PASS: full Android compile, resources, DEX and APK signature verification.
+Version 7 NOT RUN: real phone app selection, PackageInstaller consent/status flow, unknown-source settings, split install compatibility or two-device app migration.
+
+Version 7.1: automatic advance on install rejection/failure and outcome counts; OS-eligible automatic updates requested. Full build/signature verified; real-device callback/skip/auto-update tests NOT RUN.
+
+Version 7.2 PASS: TransferStats mixed types, pending/complete boundary, partial/resumed sizes, unknown/empty data and decimal GB. Full Android build and signing PASS. Physical UI visual test NOT RUN.
+
+Version 7.3 PASS: 229 strings in all three languages, English script isolation, RTL/LTR mapping, fallback, multiline and dynamic-fragment spacing; source coverage audit. Full APK build/signature PASS. Physical language switching/persistence and layout tests NOT RUN.
+
+Version 7.4 PASS: full APK build/signing; all 246 translation entries; synthetic RecordJson independently parsed for Unicode/control escaping, string numbers, long timestamps, nulls, counts, selected fixture exclusion and empty records.
+Version 7.4 NOT RUN: Android contacts/SMS/call providers, runtime/hard-restricted permissions, picker interaction, receiver backup guidance and two-device transfer. Calls/SMS are JSON backups only; no native restoration implemented.
+
+Version 7.4.1 PASS: full Android build/signature; Activity-only localized-context call sites compile. Translation catalog tests pass; signing certificate retained.
+Version 7.4.1 NOT RUN: physical/emulated dialog open/language switch/calls permission paths. No device crash stack trace supplied; BadTokenException is a code-derived diagnosis, not a captured exception.
+
+Version 7.5 PASS: PermissionPlanTest sender/receiver and SDK boundaries 26–36, permission group uniqueness, absence of overlay/protected-file/SMS-send access. 252 localized strings. Full APK build/signature and upgrade certificate continuity.
+Version 7.5 NOT RUN: Android runtime request queue/callbacks, denied or selected-only access, settings return, real notification visibility and post-permission hotspot startup. Activity-scoped transfers still require app kept open.
+
+Version 7.5.1 PASS: bounded BUSY retry policy, permanent-error no-retry, full APK build/signature, upgrade certificate, 253 translations. NOT RUN: real Wi-Fi Direct recovery/local hotspot fallback, cancellation races, QR pairing on Samsung Android 16.
+
+Version 7.6 PASS: full APK build/signature, upgrade certificate, mixed media acknowledged count tests, 256 translations. NOT RUN: physical app icon picker/check states, default SMS/calls selection, concise progress and final summary display.
+
+Version 7.6.1 PASS: full APK build/signature, upgrade certificate, 258 translations. NOT RUN: committed-file list/viewer intents, selected package installer launch, direct SMS export/toggle on Android.
+
+Version 7.7 PASS: full APK build/signature, upgrade certificate, 264 translations; reference-video frames inspected. NOT RUN: native dark screen rendering/scrolling, menu/role taps, visual comparison on device.
+
+Version 7.8 PASS: full APK build/signature, upgrade identity, 268 translations. NOT RUN: Android gallery/date selection/thumbnail loading, tabs, search/filter interactions, partial media permissions, large-media performance.
+
+7.9: signed APK build passed; TransferStatsTest covers MB/GB boundary, zero and sub-KB display. Calls share SMS direct export-all path and toggle off; contacts picker unchanged. No physical-device validation.
+
+7.9.1: reverted MB display change to prior GB formatter; kept call select-all toggle. User requested APK size over 1 MB: included deterministic inert 1 MiB package-padding.bin asset, with no runtime use or performance benefit. Manual and Gradle builds include assets. Signed APK build passed; not device tested.
+
+8.0: refreshed native home illustration and contrast, three-step active/completed indicators, category selection borders/ripples, responsive-height buttons, transfer/result information cards, gallery search field. Corrected one-tap call/SMS guidance in all locales. Signed build and translation/TransferStats tests passed. No emulator or physical-device visual verification; system pickers/install dialogs retain OS UI. Transport and media byte counts unchanged.
+
+8.1: dedicated USB receiving entry from home menu, cable illustration and localized steps. USB wait page has retry; back returns USB setup. Android 8/9 folder success resumes USB and cancellation returns USB setup. Signed build, 278 translations and static USB-only route checks passed; physical USB transport/UI not tested.
+
+8.1.1: Sorani role labels updated and new-phone receiver placed first; old-phone sender second. Signed APK build passed. No device UI test.
+
+8.2: Connect > Select > Transfer. Sender permissions route to connection page. Wi-Fi verifies encrypted peer handshake then closes preflight TCP while retaining network; receiver accepts subsequent transfer connection (10-minute accept window). USB retains authenticated channel while sender selects. Receiver selection waiting screen. Connection page clears stale sender state. Signed build, 281 translations and simulated UsbSessionTest passed. Physical-device connection-first flow not tested.
+
+8.3: replaced incoming-transfer AlertDialog message with a custom RTL/LTR-aware confirmation card. It shows receive icon, file count, known byte total and unknown-size marker, up to three ellipsized file names, a remainder label, and two 58dp action buttons. Confirmation latch/timeout/cancel behavior is preserved. Signed build and 284 translation test passed; no device UI test.
+
+8.4: selection page has grouped headings and visual cards for photos, videos, files, APK apps, audio, contacts, calls and SMS. Hotspot status includes an Android capability message for 6/6E, 5 GHz or fallback. Wi-Fi Direct configuration can request only 5 GHz or AUTO in Android’s public API, so the app reports/detects support but cannot force 6/6E. Signed build and 290 translation test passed; device radio behavior remains untested.
