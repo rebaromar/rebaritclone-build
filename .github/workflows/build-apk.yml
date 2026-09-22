@@ -1,4 +1,4 @@
-name: Build REBAR IT Clone 9.5
+name: Build REBAR IT Clone 9.6
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'rebaritclone-v9.5-source.zip'
+      - 'rebaritclone-v9.6-source.zip'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
         run: |
           rm -rf source
           mkdir -p source
-          unzip -q rebaritclone-v9.5-source.zip -d source
+          unzip -q rebaritclone-v9.6-source.zip -d source
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -48,12 +48,12 @@ jobs:
       - name: Name APK
         run: |
           cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
-          REBAR-IT-Clone-9.5.apk
+          REBAR-IT-Clone-9.6.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: REBAR-IT-Clone-9.5
-          path: REBAR-IT-Clone-9.5.apk
+          name: REBAR-IT-Clone-9.6
+          path: REBAR-IT-Clone-9.6.apk
           if-no-files-found: error
           retention-days: 30
