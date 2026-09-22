@@ -1,4 +1,4 @@
-name: REBAR IT - Build and Auto Publish 9.9
+name: REBAR IT - Build and Auto Publish 10.0
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'rebaritclone-v9.9-source.zip'
+      - 'rebaritclone-v10.0-source.zip'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
         run: |
           rm -rf source
           mkdir -p source
-          unzip -q rebaritclone-v9.9-source.zip -d source
+          unzip -q rebaritclone-v10.0-source.zip -d source
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -61,13 +61,13 @@ jobs:
       - name: Prepare APK
         run: |
           cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
-          REBAR-IT-Clone-9.9.apk
+          REBAR-IT-Clone-10.0.apk
 
       - name: Keep APK as GitHub artifact
         uses: actions/upload-artifact@v4
         with:
-          name: REBAR-IT-Clone-9.9
-          path: REBAR-IT-Clone-9.9.apk
+          name: REBAR-IT-Clone-10.0
+          path: REBAR-IT-Clone-10.0.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -83,7 +83,7 @@ jobs:
 
           BASE = "https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
           PASSWORD = os.environ["UPDATE_ADMIN_PASSWORD"]
-          APK = Path("REBAR-IT-Clone-9.9.apk")
+          APK = Path("REBAR-IT-Clone-10.0.apk")
 
           def call(path, data, content_type):
               req = urllib.request.Request(
@@ -109,10 +109,10 @@ jobs:
           apk_url = upload["apkUrl"]
 
           release = {
-              "versionCode": 42,
-              "versionName": "9.9",
+              "versionCode": 43,
+              "versionName": "10.0",
               "apkUrl": apk_url,
-              "notes": "چاککردنی هەڵبژاردنی تاکە ئەپ، لابردنی بەشی نوێ و چاککردنی Installed و Not Installed"
+              "notes": "چاککردنی وێنە و ڤیدیۆ، چاککردنی گەڕانەوەی فایل و زیادکردنی سڕینەوەی ئەپەکان"
           }
 
           result = call(
@@ -124,6 +124,6 @@ jobs:
           if result.get("ok") is not True:
               raise SystemExit("Publish failed: " + str(result))
 
-          print("REBAR IT 9.9 published successfully")
+          print("REBAR IT 10.0 published successfully")
           print("APK:", apk_url)
           PYCODE
