@@ -1,4 +1,4 @@
-name: Build REBAR IT Clone 9.6
+name: REBAR IT - Build and Auto Publish 9.6
 
 on:
   workflow_dispatch:
@@ -12,14 +12,27 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: rebarit-production
+  cancel-in-progress: false
+
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check publishing password
+        env:
+          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$UPDATE_ADMIN_PASSWORD" ]; then
+            echo "::error::UPDATE_ADMIN_PASSWORD secret is missing"
+            exit 1
+          fi
 
       - name: Extract project
         run: |
@@ -45,15 +58,73 @@ jobs:
         working-directory: source/ClonePhone
         run: ./gradlew --no-daemon assembleDebug
 
-      - name: Name APK
+      - name: Prepare APK
         run: |
           cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
           REBAR-IT-Clone-9.6.apk
 
-      - name: Upload APK
+      - name: Keep APK as GitHub artifact
         uses: actions/upload-artifact@v4
         with:
           name: REBAR-IT-Clone-9.6
           path: REBAR-IT-Clone-9.6.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload and publish update
+        env:
+          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+        run: |
+          python3 - <<'PYCODE'
+          import json
+          import os
+          import urllib.request
+          import urllib.parse
+          from pathlib import Path
+
+          BASE = "https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
+          PASSWORD = os.environ["UPDATE_ADMIN_PASSWORD"]
+          APK = Path("REBAR-IT-Clone-9.6.apk")
+
+          def call(path, data, content_type):
+              req = urllib.request.Request(
+                  BASE + path,
+                  data=data,
+                  method="POST",
+                  headers={
+                      "X-Admin-Password": PASSWORD,
+                      "Content-Type": content_type,
+                      "Accept": "application/json",
+                      "User-Agent": "REBAR-IT-GitHub-Actions/1.0"
+                  }
+              )
+              with urllib.request.urlopen(req, timeout=180) as response:
+                  return json.load(response)
+
+          upload = call(
+              "/api/upload",
+              APK.read_bytes(),
+              "application/vnd.android.package-archive"
+          )
+
+          apk_url = upload["apkUrl"]
+
+          release = {
+              "versionCode": 39,
+              "versionName": "9.6",
+              "apkUrl": apk_url,
+              "notes": "شاشەی نوێی گواستنەوەی فایل زیاد کرا"
+          }
+
+          result = call(
+              "/api/publish",
+              json.dumps(release, ensure_ascii=False).encode("utf-8"),
+              "application/json; charset=utf-8"
+          )
+
+          if result.get("ok") is not True:
+              raise SystemExit("Publish failed: " + str(result))
+
+          print("REBAR IT 9.6 published successfully")
+          print("APK:", apk_url)
+          PYCODE
