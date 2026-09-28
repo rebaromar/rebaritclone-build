@@ -1,0 +1,193 @@
+name: REBAR IT - Automatic Build & Publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'rebaritclone-source.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rebarit-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check publishing password
+        env:
+          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$UPDATE_ADMIN_PASSWORD" ]; then
+            echo "::error::UPDATE_ADMIN_PASSWORD secret is missing"
+            exit 1
+          fi
+
+      - name: Extract source
+        run: |
+          rm -rf source
+          mkdir -p source
+          unzip -q rebaritclone-source.zip -d source
+
+          if [ ! -f "source/ClonePhone/gradlew" ]; then
+            echo "::error::ClonePhone/gradlew not found inside ZIP"
+            exit 1
+          fi
+
+      - name: Read app version automatically
+        shell: bash
+        run: |
+          GRADLE_FILE="source/ClonePhone/app/build.gradle"
+
+          VERSION_NAME=$(sed -nE \
+            "s/.*versionName[[:space:]]+['\"]([^'\"]+)['\"].*/\1/p" \
+            "$GRADLE_FILE" | head -n1)
+
+          VERSION_CODE=$(sed -nE \
+            's/.*versionCode[[:space:]]+([0-9]+).*/\1/p' \
+            "$GRADLE_FILE" | head -n1)
+
+          if [ -z "$VERSION_NAME" ] || [ -z "$VERSION_CODE" ]; then
+            echo "::error::Could not read versionName/versionCode"
+            exit 1
+          fi
+
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+
+          echo "Detected version: $VERSION_NAME ($VERSION_CODE)"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Make Gradle executable
+        run: chmod +x source/ClonePhone/gradlew
+
+      - name: Build APK
+        working-directory: source/ClonePhone
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Prepare APK
+        run: |
+          cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
+          "REBAR-IT-Clone-${VERSION_NAME}.apk"
+
+      - name: Keep APK as GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REBAR-IT-Clone-${{ env.VERSION_NAME }}
+          path: REBAR-IT-Clone-${{ env.VERSION_NAME }}.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Check current published version
+        id: version_check
+        shell: bash
+        run: |
+          BASE="https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
+
+          CURRENT_JSON=$(curl -fsS \
+            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
+            "$BASE/update.json" || true)
+
+          CURRENT_CODE=$(printf '%s' "$CURRENT_JSON" | \
+            jq -r '.versionCode // 0' 2>/dev/null || echo "0")
+
+          if ! [[ "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
+            CURRENT_CODE=0
+          fi
+
+          echo "Current website: $CURRENT_CODE"
+          echo "New APK: $VERSION_CODE"
+
+          if [ "$CURRENT_CODE" -ge "$VERSION_CODE" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version already published. Skipping website upload."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload and publish automatically
+        if: steps.version_check.outputs.publish == 'true'
+        env:
+          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
+          APK="REBAR-IT-Clone-${VERSION_NAME}.apk"
+
+          echo "Uploading $APK..."
+
+          UPLOAD_JSON=$(curl --fail-with-body -sS \
+            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
+            -H "X-Admin-Password: $UPDATE_ADMIN_PASSWORD" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@$APK" \
+            "$BASE/api/upload")
+
+          APK_URL=$(printf '%s' "$UPLOAD_JSON" | jq -er '.apkUrl')
+
+          echo "APK uploaded successfully."
+
+          NOTES="نوێکردنەوەی REBAR IT - وەشانی $VERSION_NAME"
+
+          jq -n \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg apkUrl "$APK_URL" \
+            --arg notes "$NOTES" \
+            '{
+              versionCode: $versionCode,
+              versionName: $versionName,
+              apkUrl: $apkUrl,
+              notes: $notes
+            }' > release.json
+
+          HTTP_STATUS=$(curl -sS \
+            -o publish-response.json \
+            -w '%{http_code}' \
+            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
+            -H "X-Admin-Password: $UPDATE_ADMIN_PASSWORD" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data-binary @release.json \
+            "$BASE/api/publish")
+
+          cat publish-response.json
+
+          if [ "$HTTP_STATUS" = "409" ]; then
+            echo "Version is already published."
+            exit 0
+          fi
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Publish failed. HTTP $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo ""
+          echo "======================================"
+          echo "REBAR IT published successfully"
+          echo "Version: $VERSION_NAME"
+          echo "Version Code: $VERSION_CODE"
+          echo "======================================"
