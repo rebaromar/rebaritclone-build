@@ -3,10 +3,11 @@ name: REBAR IT - Automatic Build & Publish
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - rebaritclone-source.zip
-      - .github/workflows/build-apk.yml
+      - 'rebaritclone-source.zip'
+      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
@@ -24,278 +25,169 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check publishing secret
+      - name: Check publishing password
         env:
           UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
         run: |
           if [ -z "$UPDATE_ADMIN_PASSWORD" ]; then
-            echo "::error::Add UPDATE_ADMIN_PASSWORD in Settings > Secrets and variables > Actions."
+            echo "::error::UPDATE_ADMIN_PASSWORD secret is missing"
             exit 1
           fi
 
-      - name: Prepare source
+      - name: Extract source
         run: |
-          set -euo pipefail
-
-          test -f rebaritclone-source.zip || {
-            echo "::error::rebaritclone-source.zip not found."
-            exit 1
-          }
-
           rm -rf source
-          mkdir source
+          mkdir -p source
+          unzip -q rebaritclone-source.zip -d source
 
-          python3 - <<'PY'
-          from pathlib import Path
-          import zipfile
+          if [ ! -f "source/ClonePhone/gradlew" ]; then
+            echo "::error::ClonePhone/gradlew not found inside ZIP"
+            exit 1
+          fi
 
-          src = Path("rebaritclone-source.zip")
-          dest = Path("source")
+      - name: Read app version automatically
+        shell: bash
+        run: |
+          GRADLE_FILE="source/ClonePhone/app/build.gradle"
 
-          with zipfile.ZipFile(src) as z:
-              for info in z.infolist():
-                  p = Path(info.filename)
+          VERSION_NAME=$(sed -nE \
+            "s/.*versionName[[:space:]]+['\"]([^'\"]+)['\"].*/\1/p" \
+            "$GRADLE_FILE" | head -n1)
 
-                  if p.is_absolute() or ".." in p.parts:
-                      raise SystemExit(
-                          "Unsafe path in ZIP: " + info.filename
-                      )
+          VERSION_CODE=$(sed -nE \
+            's/.*versionCode[[:space:]]+([0-9]+).*/\1/p' \
+            "$GRADLE_FILE" | head -n1)
 
-              z.extractall(dest)
+          if [ -z "$VERSION_NAME" ] || [ -z "$VERSION_CODE" ]; then
+            echo "::error::Could not read versionName/versionCode"
+            exit 1
+          fi
 
-          project = dest / "ClonePhone"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
 
-          if not (project / "gradlew").exists():
-              raise SystemExit(
-                  "ZIP must contain top-level ClonePhone/"
-              )
-          PY
-
-          chmod +x source/ClonePhone/gradlew
+          echo "Detected version: $VERSION_NAME ($VERSION_CODE)"
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools platforms;android-35 build-tools;35.0.0
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Make Gradle executable
+        run: chmod +x source/ClonePhone/gradlew
 
       - name: Build APK
         working-directory: source/ClonePhone
-        run: |
-          ./gradlew --no-daemon clean assembleDebug
+        run: ./gradlew --no-daemon assembleDebug
 
       - name: Prepare APK
         run: |
-          cp \
-            source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
-            REBAR-IT-Clone.apk
-
-          python3 - <<'PY'
-          from pathlib import Path
-          import json
-          import re
-
-          gradle = Path(
-              "source/ClonePhone/app/build.gradle"
-          ).read_text()
-
-          code_match = re.search(
-              r"versionCode\s+(\d+)",
-              gradle
-          )
-
-          name_match = re.search(
-              r"versionName\s+['\"]([^'\"]+)['\"]",
-              gradle
-          )
-
-          if not code_match or not name_match:
-              raise SystemExit(
-                  "versionCode/versionName not found"
-              )
-
-          version_code = int(code_match.group(1))
-          version_name = name_match.group(1)
-
-          notes = "REBARIT CLONE " + version_name
-
-          for candidate in [
-              Path("source/ClonePhone/release-notes.txt"),
-              Path("release-notes.txt"),
-          ]:
-              if candidate.exists():
-                  value = candidate.read_text(
-                      errors="replace"
-                  ).strip()
-
-                  if value:
-                      notes = value[:4000]
-                      break
-
-          Path("release.json").write_text(
-              json.dumps({
-                  "versionCode": version_code,
-                  "versionName": version_name,
-                  "notes": notes
-              })
-          )
-
-          print(
-              "Version:",
-              version_name,
-              "Code:",
-              version_code
-          )
-          PY
+          cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
+          "REBAR-IT-Clone-${VERSION_NAME}.apk"
 
       - name: Keep APK as GitHub artifact
         uses: actions/upload-artifact@v4
         with:
-          name: REBAR-IT-Clone
-          path: REBAR-IT-Clone.apk
+          name: REBAR-IT-Clone-${{ env.VERSION_NAME }}
+          path: REBAR-IT-Clone-${{ env.VERSION_NAME }}.apk
           if-no-files-found: error
           retention-days: 30
 
+      - name: Check current published version
+        id: version_check
+        shell: bash
+        run: |
+          BASE="https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
+
+          CURRENT_JSON=$(curl -fsS \
+            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
+            "$BASE/update.json" || true)
+
+          CURRENT_CODE=$(printf '%s' "$CURRENT_JSON" | \
+            jq -r '.versionCode // 0' 2>/dev/null || echo "0")
+
+          if ! [[ "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
+            CURRENT_CODE=0
+          fi
+
+          echo "Current website: $CURRENT_CODE"
+          echo "New APK: $VERSION_CODE"
+
+          if [ "$CURRENT_CODE" -ge "$VERSION_CODE" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version already published. Skipping website upload."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload and publish automatically
+        if: steps.version_check.outputs.publish == 'true'
         env:
           UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
-
+        shell: bash
         run: |
-          python3 - <<'PY'
-          import json
-          import os
-          import time
-          import urllib.request
-          import urllib.error
-          import urllib.parse
+          set -euo pipefail
 
-          from pathlib import Path
+          BASE="https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
+          APK="REBAR-IT-Clone-${VERSION_NAME}.apk"
 
-          base = (
-              "https://rebaritclone-update-admin."
-              "rebar4qwrna.workers.dev"
-          )
+          echo "Uploading $APK..."
 
-          secret = os.environ[
-              "UPDATE_ADMIN_PASSWORD"
-          ].strip()
+          UPLOAD_JSON=$(curl --fail-with-body -sS \
+            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
+            -H "X-Admin-Password: $UPDATE_ADMIN_PASSWORD" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@$APK" \
+            "$BASE/api/upload")
 
-          if not secret:
-              raise SystemExit(
-                  "UPDATE_ADMIN_PASSWORD is empty"
-              )
+          APK_URL=$(printf '%s' "$UPLOAD_JSON" | jq -er '.apkUrl')
 
-          release = json.loads(
-              Path("release.json").read_text()
-          )
+          echo "APK uploaded successfully."
 
-          apk = Path(
-              "REBAR-IT-Clone.apk"
-          ).read_bytes()
+          NOTES="نوێکردنەوەی REBAR IT - وەشانی $VERSION_NAME"
 
-          def post(path, data, content_type):
+          jq -n \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg apkUrl "$APK_URL" \
+            --arg notes "$NOTES" \
+            '{
+              versionCode: $versionCode,
+              versionName: $versionName,
+              apkUrl: $apkUrl,
+              notes: $notes
+            }' > release.json
 
-              req = urllib.request.Request(
-                  base + path,
-                  data=data,
-                  method="POST",
-                  headers={
-                      "X-Admin-Password": secret,
-                      "Content-Type": content_type,
-                      "Cache-Control": "no-cache",
-                      "User-Agent":
-                          "REBARIT-Clone-GitHub-Actions"
-                  }
-              )
+          HTTP_STATUS=$(curl -sS \
+            -o publish-response.json \
+            -w '%{http_code}' \
+            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
+            -H "X-Admin-Password: $UPDATE_ADMIN_PASSWORD" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data-binary @release.json \
+            "$BASE/api/publish")
 
-              with urllib.request.urlopen(
-                  req,
-                  timeout=180
-              ) as response:
+          cat publish-response.json
 
-                  return json.load(response)
+          if [ "$HTTP_STATUS" = "409" ]; then
+            echo "Version is already published."
+            exit 0
+          fi
 
-          upload = post(
-              "/api/upload",
-              apk,
-              "application/vnd.android.package-archive"
-          )
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Publish failed. HTTP $HTTP_STATUS"
+            exit 1
+          fi
 
-          apk_url = upload.get("apkUrl")
-
-          if not apk_url:
-              raise SystemExit(
-                  "apkUrl missing"
-              )
-
-          if int(
-              upload.get("versionCode", -1)
-          ) != int(
-              release["versionCode"]
-          ):
-              raise SystemExit(
-                  "Uploaded APK version mismatch"
-              )
-
-          apk_parts = urllib.parse.urlsplit(
-              apk_url
-          )
-
-          base_parts = urllib.parse.urlsplit(
-              base
-          )
-
-          if (
-              apk_parts.scheme != "https"
-              or
-              apk_parts.netloc != base_parts.netloc
-          ):
-              raise SystemExit(
-                  "Unexpected APK URL"
-              )
-
-          release["apkUrl"] = apk_url
-
-          payload = json.dumps(
-              release
-          ).encode("utf-8")
-
-          for attempt in range(6):
-
-              try:
-
-                  result = post(
-                      "/api/publish",
-                      payload,
-                      "application/json"
-                  )
-
-                  if result.get("ok") is not True:
-                      raise RuntimeError(
-                          "Publish did not return ok=true"
-                      )
-
-                  print(
-                      "Published",
-                      release["versionName"],
-                      release["versionCode"]
-                  )
-
-                  break
-
-              except urllib.error.HTTPError as error:
-
-                  if (
-                      error.code not in
-                      (409, 429, 503)
-                      or attempt == 5
-                  ):
-                      raise
-
-                  time.sleep(15)
-          PY
+          echo ""
+          echo "======================================"
+          echo "REBAR IT published successfully"
+          echo "Version: $VERSION_NAME"
+          echo "Version Code: $VERSION_CODE"
+          echo "======================================"
