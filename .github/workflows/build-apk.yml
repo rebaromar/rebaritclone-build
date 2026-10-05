@@ -74,6 +74,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Test automatic pairing protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p protocol-test-classes
+          javac --release 8 -encoding UTF-8 -d protocol-test-classes \
+            source/ClonePhone/app/src/main/java/com/abdulla/clonephone/NearbyProtocol.java \
+            source/ClonePhone/tests/NearbyProtocolTest.java
+          java -cp protocol-test-classes com.abdulla.clonephone.NearbyProtocolTest
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -90,6 +100,18 @@ jobs:
         run: |
           cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
           "REBAR-IT-Clone-${VERSION_NAME}.apk"
+
+      - name: Verify original-app update compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="REBAR-IT-Clone-${VERSION_NAME}.apk"
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOLS/apksigner" verify --print-certs "$APK" > apk-signature.txt
+          grep -Fq 'Signer #1 certificate SHA-256 digest: 69539fd2465d035bd618755a8cbcbfca402f88d449c5b6611f649d58ad7b3c7e' apk-signature.txt
+          "$TOOLS/aapt2" dump badging "$APK" > apk-badging.txt
+          grep -Fq "package: name='com.abdulla.clonephone' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" apk-badging.txt
+          echo "Package, version and original 18.9 signing certificate verified."
 
       - name: Keep APK as GitHub artifact
         uses: actions/upload-artifact@v4
@@ -150,7 +172,7 @@ jobs:
 
           echo "APK uploaded successfully."
 
-          NOTES="نوێکردنەوەی REBAR IT - وەشانی $VERSION_NAME"
+          NOTES="$(cat release-notes.txt)"
 
           jq -n \
             --argjson versionCode "$VERSION_CODE" \
