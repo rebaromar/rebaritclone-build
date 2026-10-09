@@ -19,6 +19,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Extract source archive
+        run: unzip -q rebaritclone-source.zip
       - name: Test pairing and band policy
         run: |
           set -euo pipefail
