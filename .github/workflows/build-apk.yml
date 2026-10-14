@@ -94,11 +94,11 @@ jobs:
 
       - name: Build APK
         working-directory: source/ClonePhone
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleRelease
 
       - name: Prepare APK
         run: |
-          cp source/ClonePhone/app/build/outputs/apk/debug/app-debug.apk \
+          cp source/ClonePhone/app/build/outputs/apk/release/app-release.apk \
           "REBAR-IT-Clone-${VERSION_NAME}.apk"
 
       - name: Verify original-app update compatibility
