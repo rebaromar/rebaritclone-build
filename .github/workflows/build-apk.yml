@@ -8,9 +8,10 @@ on:
     paths:
       - 'rebaritclone-source.zip'
       - '.github/workflows/build-apk.yml'
+      - 'cloudflare/download-center.js'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: rebarit-production
@@ -24,15 +25,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Check publishing password
-        env:
-          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
-        run: |
-          if [ -z "$UPDATE_ADMIN_PASSWORD" ]; then
-            echo "::error::UPDATE_ADMIN_PASSWORD secret is missing"
-            exit 1
-          fi
 
       - name: Extract source
         run: |
@@ -121,95 +113,20 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Check current published version
-        id: version_check
-        shell: bash
-        run: |
-          BASE="https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
-
-          CURRENT_JSON=$(curl -fsS \
-            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
-            "$BASE/update.json" || true)
-
-          CURRENT_CODE=$(printf '%s' "$CURRENT_JSON" | \
-            jq -r '.versionCode // 0' 2>/dev/null || echo "0")
-
-          if ! [[ "$CURRENT_CODE" =~ ^[0-9]+$ ]]; then
-            CURRENT_CODE=0
-          fi
-
-          echo "Current website: $CURRENT_CODE"
-          echo "New APK: $VERSION_CODE"
-
-          if [ "$CURRENT_CODE" -ge "$VERSION_CODE" ]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Version already published. Skipping website upload."
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload and publish automatically
-        if: steps.version_check.outputs.publish == 'true'
+      - name: Publish APK as a GitHub release
         env:
-          UPDATE_ADMIN_PASSWORD: ${{ secrets.UPDATE_ADMIN_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-
-          BASE="https://rebaritclone-update-admin.rebar4qwrna.workers.dev"
+          TAG="v${VERSION_NAME}"
           APK="REBAR-IT-Clone-${VERSION_NAME}.apk"
 
-          echo "Uploading $APK..."
-
-          UPLOAD_JSON=$(curl --fail-with-body -sS \
-            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
-            -H "X-Admin-Password: $UPDATE_ADMIN_PASSWORD" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary "@$APK" \
-            "$BASE/api/upload")
-
-          APK_URL=$(printf '%s' "$UPLOAD_JSON" | jq -er '.apkUrl')
-
-          echo "APK uploaded successfully."
-
-          NOTES="$(cat release-notes.txt)"
-
-          jq -n \
-            --argjson versionCode "$VERSION_CODE" \
-            --arg versionName "$VERSION_NAME" \
-            --arg apkUrl "$APK_URL" \
-            --arg notes "$NOTES" \
-            '{
-              versionCode: $versionCode,
-              versionName: $versionName,
-              apkUrl: $apkUrl,
-              notes: $notes
-            }' > release.json
-
-          HTTP_STATUS=$(curl -sS \
-            -o publish-response.json \
-            -w '%{http_code}' \
-            -A "Mozilla/5.0 REBAR-IT-GitHub-Actions" \
-            -H "X-Admin-Password: $UPDATE_ADMIN_PASSWORD" \
-            -H "Content-Type: application/json; charset=utf-8" \
-            --data-binary @release.json \
-            "$BASE/api/publish")
-
-          cat publish-response.json
-
-          if [ "$HTTP_STATUS" = "409" ]; then
-            echo "Version is already published."
-            exit 0
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$TAG" --title "REBARIT CLONE ${VERSION_NAME}" \
+              --notes-file release-notes.txt --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$APK" --title "REBARIT CLONE ${VERSION_NAME}" \
+              --notes-file release-notes.txt --repo "$GITHUB_REPOSITORY"
           fi
-
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::Publish failed. HTTP $HTTP_STATUS"
-            exit 1
-          fi
-
-          echo ""
-          echo "======================================"
-          echo "REBAR IT published successfully"
-          echo "Version: $VERSION_NAME"
-          echo "Version Code: $VERSION_CODE"
-          echo "======================================"
