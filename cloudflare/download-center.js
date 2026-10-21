@@ -32,11 +32,9 @@ export default {
     }
 
     const version = escapeHtml(release.manifest.versionName);
-    const notes = escapeHtml(release.manifest.notes || "دوایین وەشانی REBARIT CLONE ئامادەیە.");
     const download = `${url.origin}/apk`;
-    const qr = `https://quickchart.io/qr?size=320&margin=2&text=${encodeURIComponent(download)}`;
 
-    return new Response(page(version, notes, download, qr), {
+    return new Response(page(version, download), {
       headers: {
         "Content-Type": "text/html; charset=UTF-8",
         "Cache-Control": "no-store, no-cache, must-revalidate",
@@ -98,7 +96,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function page(version, notes, download, qr) {
+function page(version, download) {
   return `<!doctype html>
 <html lang="ckb" dir="rtl">
 <head>
@@ -107,24 +105,16 @@ function page(version, notes, download, qr) {
   <meta name="theme-color" content="#071018">
   <title>REBARIT CLONE — Download</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% -10%,#17334a,#071018 48%,#050b10);color:#f7fafc;font-family:system-ui,-apple-system,"Noto Sans Arabic",Arial,sans-serif}.container{width:min(100%,520px)}.logo{width:76px;height:76px;margin:0 auto 14px;border-radius:23px;display:grid;place-items:center;background:linear-gradient(145deg,#f7df83,#b99636);color:#101820;font-size:34px;font-weight:950}h1{text-align:center;margin:0;font-size:28px;letter-spacing:.4px}.subtitle{text-align:center;color:#9db0be;margin:7px 0 20px;font-size:14px}.card{background:linear-gradient(180deg,rgba(16,30,41,.97),rgba(11,21,29,.97));border:1px solid #223443;border-radius:24px;padding:22px;box-shadow:0 22px 70px #0008}.live{display:flex;justify-content:center;align-items:center;gap:8px;color:#c8d4dc;font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#35d07f;box-shadow:0 0 14px #35d07f}.version{text-align:center;color:#f4d76e;font-size:36px;font-weight:900;margin:8px 0}.notes{text-align:center;color:#9db0be;font-size:14px;line-height:1.8;margin:0 0 18px;white-space:pre-line}.download{display:flex;justify-content:center;align-items:center;width:100%;padding:16px;border-radius:16px;background:#f4d76e;color:#111820;font-size:17px;font-weight:900;text-decoration:none}.line{height:1px;background:#223443;margin:22px 0}.qr{text-align:center}.qr img{display:block;width:185px;height:185px;margin:0 auto 12px;padding:9px;border-radius:17px;background:white}.qr-title{font-weight:800}.qr-info{color:#9db0be;font-size:12px;line-height:1.7;margin-top:5px}.security{text-align:center;color:#7f929f;font-size:12px;margin-top:18px}footer{text-align:center;color:#617481;font-size:11px;margin-top:16px}@media(max-width:420px){body{padding:16px}.card{padding:18px}.version{font-size:31px}.qr img{width:170px;height:170px}}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% -10%,#17334a,#071018 48%,#050b10);color:#f7fafc;font-family:system-ui,-apple-system,"Noto Sans Arabic",Arial,sans-serif}.container{width:min(100%,440px)}h1{text-align:center;margin:0 0 24px;font-size:27px;letter-spacing:.3px}.card{background:linear-gradient(180deg,rgba(16,30,41,.97),rgba(11,21,29,.97));border:1px solid #223443;border-radius:24px;padding:24px;box-shadow:0 22px 70px #0008}.version{text-align:center;color:#f4d76e;font-size:28px;font-weight:900;margin:0 0 22px}.download{display:flex;justify-content:center;align-items:center;width:100%;padding:17px;border-radius:16px;background:#f4d76e;color:#111820;font-size:17px;font-weight:900;text-decoration:none}.download:active{transform:scale(.985)}@media(max-width:420px){body{padding:16px}.card{padding:20px}}
   </style>
 </head>
 <body>
   <main class="container">
-    <div class="logo">R</div>
     <h1>REBARIT CLONE</h1>
-    <div class="subtitle">Fast &amp; Secure Android Data Transfer</div>
     <section class="card">
-      <div class="live"><span class="dot"></span>وەشانی بەردەست</div>
-      <div class="version">${version}</div>
-      <div class="notes">${notes}</div>
-      <a class="download" href="${download}">⬇️ دابەزاندنی APK بۆ ئەندرۆید</a>
-      <div class="line"></div>
-      <div class="qr"><img src="${qr}" alt="REBARIT CLONE QR Code"><div class="qr-title">QR Code ـەکە Scan بکە</div><div class="qr-info">بۆ دابەزاندنی ڕاستەوخۆی دوایین وەشانی REBARIT CLONE</div></div>
-      <div class="security">✓ Direct latest build&nbsp; • &nbsp;✓ Auto Update</div>
+      <div class="version">وەشانی ${version}</div>
+      <a class="download" href="${download}">دابەزاندنی APK</a>
     </section>
-    <footer>© REBARIT CLONE</footer>
   </main>
 </body>
 </html>`;
