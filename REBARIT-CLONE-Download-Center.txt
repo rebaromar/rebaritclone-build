@@ -2,6 +2,7 @@
 
 const REPOSITORY = "rebaromar/rebaritclone-build";
 const RELEASES_API = `https://api.github.com/repos/${REPOSITORY}/releases/latest`;
+const UPDATE_WORKER = "https://rebaritclone-update-admin.rebar4qwrna.workers.dev";
 
 export default {
   async fetch(request) {
@@ -24,7 +25,7 @@ export default {
     }
 
     if (url.pathname === "/apk" || url.pathname === "/download") {
-      return Response.redirect(release.apkUrl, 302);
+      return proxyApk(release.assetUrl, request);
     }
 
     if (url.pathname !== "/") {
@@ -44,6 +45,43 @@ export default {
     });
   },
 };
+
+async function proxyApk(assetUrl, request) {
+  try {
+    const requestHeaders = new Headers({ "User-Agent": "REBARIT-CLONE-Download-Center" });
+    const range = request.headers.get("Range");
+    if (range) requestHeaders.set("Range", range);
+
+    const upstream = await fetch(assetUrl, {
+      headers: requestHeaders,
+      cf: { cacheTtl: 0, cacheEverything: false },
+    });
+    if (!upstream.ok || !upstream.body) {
+      return new Response("APK download is temporarily unavailable.", {
+        status: 502,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    const headers = new Headers({
+      "Content-Type": "application/vnd.android.package-archive",
+      "Content-Disposition": 'attachment; filename="REBARIT-CLONE.apk"',
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    const length = upstream.headers.get("Content-Length");
+    const contentRange = upstream.headers.get("Content-Range");
+    if (length) headers.set("Content-Length", length);
+    if (contentRange) headers.set("Content-Range", contentRange);
+
+    return new Response(upstream.body, { status: upstream.status, headers });
+  } catch (error) {
+    return new Response("APK download is temporarily unavailable.", {
+      status: 502,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+}
 
 async function getLatestRelease() {
   try {
@@ -66,13 +104,14 @@ async function getLatestRelease() {
     const versionCode = codeLine ? Number(codeLine[1]) : dottedVersionCode(versionName);
     const notes = latestVersionNotes(String(release.body || ""), versionName);
 
+    const apkUrl = `${UPDATE_WORKER}/apk`;
     return {
-      apkUrl: apk.browser_download_url,
+      assetUrl: apk.browser_download_url,
       manifest: {
         versionCode,
         versionName,
         notes,
-        apkUrl: apk.browser_download_url,
+        apkUrl,
       },
     };
   } catch (error) {
