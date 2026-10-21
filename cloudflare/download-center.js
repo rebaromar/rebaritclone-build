@@ -102,15 +102,13 @@ async function getLatestRelease() {
     const versionName = String(release.tag_name || "").replace(/^v/, "");
     const codeLine = String(release.body || "").match(/^Version-Code:\s*(\d+)\s*$/m);
     const versionCode = codeLine ? Number(codeLine[1]) : dottedVersionCode(versionName);
-    const notes = latestVersionNotes(String(release.body || ""), versionName);
-
     const apkUrl = `${UPDATE_WORKER}/apk`;
     return {
       assetUrl: apk.browser_download_url,
       manifest: {
         versionCode,
         versionName,
-        notes,
+        notes: "",
         apkUrl,
       },
     };
@@ -120,25 +118,6 @@ async function getLatestRelease() {
       headers: { "Cache-Control": "no-store", "Retry-After": "60" },
     });
   }
-}
-
-function latestVersionNotes(body, versionName) {
-  const lines = body.replace(/^Version-Code:.*$/gm, "").split(/\r?\n/);
-  const heading = /^\s*وەشانی\s+([\d.]+)\s*$/;
-  const selected = [];
-  let inLatestSection = false;
-
-  for (const line of lines) {
-    const match = line.match(heading);
-    if (match) {
-      if (inLatestSection) break;
-      inLatestSection = match[1] === versionName;
-      continue;
-    }
-    if (inLatestSection) selected.push(line);
-  }
-
-  return selected.join("\n").trim();
 }
 
 function dottedVersionCode(version) {
