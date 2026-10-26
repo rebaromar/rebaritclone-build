@@ -36,6 +36,12 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - name: Export current source archive for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebaritclone-source-current
+          path: rebaritclone-source.zip
+          retention-days: 1
       - name: Build APK (no publish)
         working-directory: ClonePhone
         run: chmod +x gradlew && ./gradlew --no-daemon assembleDebug
