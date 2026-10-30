@@ -21,6 +21,8 @@ jobs:
           java-version: '17'
       - name: Extract source archive
         run: unzip -q rebaritclone-source.zip
+      - name: Apply USB permission fix
+        run: git apply patches/rebarit-v19.21.patch
       - name: Test pairing and band policy
         run: |
           set -euo pipefail
@@ -32,6 +34,8 @@ jobs:
             ClonePhone/tests/WifiBandPolicyTest.java
           java -cp test-classes com.abdulla.clonephone.NearbyProtocolTest
           java -cp test-classes WifiBandPolicyTest
+          javac --release 8 -encoding UTF-8 -d test-classes ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbPermissionGate.java ClonePhone/tests/UsbPermissionGateTest.java
+          java -cp test-classes com.abdulla.clonephone.UsbPermissionGateTest
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
