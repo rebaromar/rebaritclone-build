@@ -11,6 +11,19 @@
      }
      compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
      kotlinOptions { jvmTarget = '17' }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneAppPicker.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneAppPicker.java
+@@ -14,8 +14,8 @@
+ import java.util.concurrent.*;
+ 
+ /** Searchable individual APK selection. Package lookups and icon rendering stay off the UI thread. */
+-final class CloneAppPicker {
+-    static final class App {final String packageName,name;final long bytes;App(String pkg,String label,long size){packageName=pkg;name=label;bytes=size;}}
++public final class CloneAppPicker {
++    public static final class App {public final String packageName,name;public final long bytes;public App(String pkg,String label,long size){packageName=pkg;name=label;bytes=size;}}
+     interface Done {void selected(Set<String> packages);default void cancelled(){}}
+     static void show(Activity activity,List<App> apps,Set<String> previous,Done done){show(activity,apps,previous,done,false);}
+     static void show(Activity activity,List<App> apps,Set<String> previous,Done done,boolean usbReceiver){new CloneAppPicker(activity,apps,previous,done,usbReceiver).show();}
 --- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
 +++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
 @@ -134,7 +134,9 @@
@@ -186,39 +199,7 @@
      @JvmStatic fun command(command: Int): ByteArray = byteArrayOf(command.toByte())
  
      @JvmStatic fun `is`(packet: ByteArray?, command: Int): Boolean =
-@@ -62,6 +69,31 @@
-         return buffer.toByteArray()
-     }
- 
-+    @JvmStatic fun command(command: Int): ByteArray = byteArrayOf(command.toByte())
-+
-+    @JvmStatic fun `is`(packet: ByteArray?, command: Int): Boolean =
-+        packet != null && packet.size == 1 && (packet[0].toInt() and 0xff) == command
-+
-+    @JvmStatic
-+    @Throws(IOException::class)
-+    fun encodeInventory(categories: List<Category>): ByteArray {
-+        if (categories.size > MAX_CATEGORIES) throw IOException("USB_PROTOCOL")
-+        val buffer = ByteArrayOutputStream()
-+        DataOutputStream(buffer).use { out ->
-+            out.writeByte(INVENTORY)
-+            out.writeByte(VERSION)
-+            out.writeInt(categories.size)
-+            for (c in categories) {
-+                if (c.id.length > MAX_ID || c.count < 0 || c.bytes < -1) throw IOException("USB_PROTOCOL")
-+                out.writeUTF(c.id)
-+                out.writeInt(c.count)
-+                out.writeLong(c.bytes)
-+            }
-+            out.flush()
-+        }
-+        return buffer.toByteArray()
-+    }
-+
-     @JvmStatic
-     @Throws(IOException::class)
-     fun decodeInventory(packet: ByteArray): List<Category> {
-@@ -190,4 +222,92 @@
+@@ -190,4 +197,92 @@
          if (input.available() != 0) throw IOException("USB_PROTOCOL")
          return result
      }
