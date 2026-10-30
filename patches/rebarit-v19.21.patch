@@ -1,0 +1,342 @@
+--- a/ClonePhone/app/build.gradle
++++ b/ClonePhone/app/build.gradle
+@@ -7,8 +7,8 @@
+         applicationId 'com.abdulla.clonephone'
+         minSdk 23
+         targetSdk 34
+-        versionCode 210
+-        versionName '19.20'
++        versionCode 211
++        versionName '19.21'
+     }
+     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+     kotlinOptions { jvmTarget = '17' }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
+@@ -1311,6 +1311,7 @@
+             }
+             public void status(String message){runOnUiThread(()->{if(!isDestroyed()&&token==linkGeneration&&status!=null)status.setText(message);});}
+             public void failed(String reason){if(isDestroyed()||token!=linkGeneration)return;linking=false;
++                if(usb.permissionNeedsUserRetry())usbAutoResume=false;
+                 clearUsbAttemptState();
+                 if(usbAutoResume&&!cancelled){
+                     usbReconnectAttempts=Math.min(Integer.MAX_VALUE-1,usbReconnectAttempts+1);showReconnectWaiting();
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbLink.kt
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbLink.kt
+@@ -69,7 +69,11 @@
+     private val bulkRequestSize = AtomicInteger(bulkSize())
+ 
+     private var registered = false
+-    private var requestedKey: String? = null
++    private val permissionGate = UsbPermissionGate()
++    private var permissionGrantDeadline = 0L
++    private var permissionUserRetry = false
++    private var waitingForAoa = false
++    private var aoaDeadline = 0L
+     private var permissionSession = UUID.randomUUID().toString()
+     private var deviceConnection: UsbDeviceConnection? = null
+     private var accessoryDescriptor: ParcelFileDescriptor? = null
+@@ -86,10 +90,9 @@
+                     permissionAction + "." + permissionSession -> onPermissionResult(intent)
+                     UsbManager.ACTION_USB_DEVICE_ATTACHED,
+                     UsbManager.ACTION_USB_ACCESSORY_ATTACHED -> {
+-                        // Keep an outstanding permission request alive across AOA detach/attach events.
+-                        // Clearing its key here made the system's Allow result get discarded and
+-                        // caused repeated permission dialogs on some Samsung devices.
+-                        if (!connected) {
++                        // Attach broadcasts must not interrupt permission or an in-flight open/switch.
++                        if (!connected && !permissionGate.isPending() &&
++                            state != State.OPENING && state != State.SWITCHING) {
+                             state = State.DISCOVERING
+                             pollSoon(60)
+                         }
+@@ -101,7 +104,8 @@
+                             closeStreams()
+                             connected = false
+                             state = State.DISCOVERING
+-                        } else if (!connected) {
++                        } else if (!connected && !permissionGate.isPending() &&
++                            state != State.OPENING && state != State.SWITCHING) {
+                             state = State.DISCOVERING
+                             pollSoon(120)
+                         }
+@@ -113,7 +117,8 @@
+                             closeStreams()
+                             connected = false
+                             state = State.DISCOVERING
+-                        } else if (!connected) {
++                        } else if (!connected && !permissionGate.isPending() &&
++                            state != State.OPENING && state != State.SWITCHING) {
+                             state = State.DISCOVERING
+                             pollSoon(120)
+                         }
+@@ -141,7 +146,11 @@
+         this.state = State.DISCOVERING
+         this.discoveryStartedAt = SystemClock.elapsedRealtime()
+         this.deadline = discoveryStartedAt + DISCOVERY_TIMEOUT_MS
+-        this.requestedKey = null
++        this.permissionGate.reset()
++        this.permissionGrantDeadline = 0L
++        this.permissionUserRetry = false
++        this.waitingForAoa = false
++        this.aoaDeadline = 0L
+         this.permissionSession = UUID.randomUUID().toString()
+         val pm = context.packageManager
+         val canHost = pm.hasSystemFeature("android.hardware.usb.host")
+@@ -176,30 +185,56 @@
+         }
+     }
+ 
+-    private fun permissionIntent(): PendingIntent {
++    /** Permission failures require a deliberate retry instead of another automatic dialog loop. */
++    fun permissionNeedsUserRetry(): Boolean = permissionUserRetry
++
++    private fun permissionIntent(key: String, requestId: Int): PendingIntent {
+         val intent = Intent(permissionAction + "." + permissionSession).setPackage(context.packageName)
+             .putExtra(PERMISSION_GENERATION, generation)
+-        // UsbManager supplies the granted flag and device through fill-in extras.
+-        // Immutable PendingIntents discard those extras, making Allow look denied.
++            .putExtra(PERMISSION_KEY, key)
++            .putExtra(PERMISSION_REQUEST, requestId)
+         val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+             (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+-        return PendingIntent.getBroadcast(context, generation, intent, flags)
++        return PendingIntent.getBroadcast(context, requestId, intent, flags)
+     }
+ 
+     private fun onPermissionResult(intent: Intent) {
+-        // A permission dialog from an earlier discovery must not stop a new session.
+         if (intent.action != permissionAction + "." + permissionSession ||
+-            intent.getIntExtra(PERMISSION_GENERATION, -1) != generation ||
+-            requestedKey == null || connected || state == State.OPENING || state == State.SWITCHING) return
+-        val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+-        requestedKey = null
+-        if (!granted) {
+-            state = State.DISCOVERING
+-            fail("USB permission ڕەتکرایەوە • Allow هەڵبژێرە")
++            intent.getIntExtra(PERMISSION_GENERATION, -1) != generation || connected) return
++        val key = intent.getStringExtra(PERMISSION_KEY) ?: return
++        if (!permissionGate.complete(key, intent.getIntExtra(PERMISSION_REQUEST, -1))) return
++        if (!intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
++            failPermission("USB permission ڕەتکرایەوە • بۆ دووبارەکردنەوە هەوڵ بدە")
+             return
+         }
++        // Some OEMs publish the Allow callback before hasPermission becomes visible.
++        permissionGrantDeadline = SystemClock.elapsedRealtime() + PERMISSION_SETTLE_MS
++        deadline = SystemClock.elapsedRealtime() + DISCOVERY_TIMEOUT_MS
+         state = State.DISCOVERING
+-        pollSoon(40)
++        pollSoon(100)
++    }
++
++    private fun requestPermissionOnce(key: String, request: (PendingIntent) -> Unit): Boolean {
++        when (permissionGate.begin(key)) {
++            UsbPermissionGate.WAIT -> return true
++            UsbPermissionGate.ALREADY_ASKED -> {
++                if (SystemClock.elapsedRealtime() < permissionGrantDeadline) pollSoon(150)
++                else failPermission("مۆڵەتی USB لە Android ئامادە نەبوو؛ کێبڵ دووبارە پەیوەست بکە و هەوڵ بدە")
++                return true
++            }
++        }
++        state = State.WAITING_PERMISSION
++        status("USB permission چاوەڕێ دەکات…")
++        // Keep a deadline even while the Android permission dialog is open.
++        pollSoon(POLL_MS)
++        try { request(permissionIntent(key, permissionGate.requestId())) }
++        catch (_: Throwable) { failPermission("USB permission نەکرا • دووبارە هەوڵ بدە") }
++        return true
++    }
++
++    private fun failPermission(message: String) {
++        permissionUserRetry = true
++        fail(message)
+     }
+ 
+     private fun pollSoon(delayMs: Long) {
+@@ -212,9 +247,11 @@
+     private fun poll() {
+         if (!running || connected || state == State.OPENING || state == State.SWITCHING) return
+         if (SystemClock.elapsedRealtime() > deadline) {
+-            fail("USB پەیوەندی نەکرا • Data cable و Allow پشکنە")
++            if (permissionGate.isPending()) failPermission("کاتی چاوەڕوانی مۆڵەتی USB تەواو بوو؛ دووبارە هەوڵ بدە")
++            else fail("USB پەیوەندی نەکرا • Data cable و Allow پشکنە")
+             return
+         }
++        if (permissionGate.isPending()) { pollSoon(POLL_MS); return }
+         try {
+             state = State.DISCOVERING
+             // The new phone is the logical controller and gets first chance to act
+@@ -244,19 +281,7 @@
+             if (!matchesAccessory(accessory)) continue
+             if (!manager.hasPermission(accessory)) {
+                 val key = "A:${safeAccessoryIdentity(accessory)}"
+-                if (requestedKey != key) {
+-                    requestedKey = key
+-                    state = State.WAITING_PERMISSION
+-                    status("USB permission چاوەڕێ دەکات…")
+-                    try {
+-                        manager.requestPermission(accessory, permissionIntent())
+-                    } catch (_: Throwable) {
+-                        requestedKey = null
+-                        state = State.DISCOVERING
+-                        fail("USB permission نەکرا • دووبارە هەوڵ بدە")
+-                    }
+-                }
+-                return true
++                return requestPermissionOnce(key) { manager.requestPermission(accessory, it) }
+             }
+             state = State.OPENING
+             val token = generation
+@@ -272,25 +297,20 @@
+             .sortedWith(compareByDescending<UsbDevice> { isAoa(it) }.thenBy { it.deviceName })
+         for (device in devices) {
+             if (!isAoa(device) && !phoneCandidate(device)) continue
++            // After AOA_START the old endpoint can remain visible briefly. Never
++            // start AOA again or ask permission for another normal-mode enumeration.
++            if (waitingForAoa && !isAoa(device)) continue
+             if (!manager.hasPermission(device)) {
+                 val key = "D:${device.deviceName}:${device.vendorId}:${device.productId}"
+-                if (requestedKey != key) {
+-                    requestedKey = key
+-                    state = State.WAITING_PERMISSION
+-                    status("USB permission چاوەڕێ دەکات…")
+-                    try {
+-                        manager.requestPermission(device, permissionIntent())
+-                    } catch (_: Throwable) {
+-                        requestedKey = null
+-                        state = State.DISCOVERING
+-                        fail("USB permission نەکرا • Allow هەڵبژێرە")
+-                    }
+-                }
+-                return true
++                return requestPermissionOnce(key) { manager.requestPermission(device, it) }
+             }
+             state = if (isAoa(device)) State.OPENING else State.SWITCHING
+             val token = generation
+             io.execute { openHost(device, token) }
++            return true
++        }
++        if (waitingForAoa && SystemClock.elapsedRealtime() > aoaDeadline) {
++            failPermission("مۆبایلی بەرامبەر نەچووە دۆخی AOA؛ کێبڵ دووبارە پەیوەست بکە و ڕۆڵی USB پشکنە")
+             return true
+         }
+         return false
+@@ -353,8 +373,9 @@
+             connection.close()
+             main.post {
+                 if (!valid(token)) return@post
++                waitingForAoa = true
++                aoaDeadline = SystemClock.elapsedRealtime() + AOA_ENUMERATION_TIMEOUT_MS
+                 state = State.DISCOVERING
+-                requestedKey = null
+                 status("USB Transfer mode دەکرێتەوە…")
+                 pollSoon(AOA_REENUMERATE_MS)
+             }
+@@ -433,14 +454,13 @@
+         main.post {
+             if (!valid(token) || connected) return@post
+             state = State.DISCOVERING
+-            requestedKey = null
+-            val fatal = error is SecurityException || error.message == "AOA_UNSUPPORTED"
+-            if (fatal && error is SecurityException) {
+-                status("USB permission پێویستە")
+-            } else {
+-                status("USB دووبارە دەپشکنرێت…")
+-            }
+-            pollSoon(if (fatal) 800 else 450)
++            if (error is SecurityException || error.message == "AOA_UNSUPPORTED") {
++                failPermission(if (error is SecurityException) "مۆڵەتی USB ئامادە نییە؛ کێبڵ دووبارە پەیوەست بکە"
++                    else "مۆبایلی بەرامبەر AOA پشتگیری ناکات یان ڕۆڵی USB نەگونجاوە")
++                return@post
++            }
++            status("USB دووبارە دەپشکنرێت…")
++            pollSoon(450)
+         }
+     }
+ 
+@@ -482,7 +502,7 @@
+         connected = false
+         closed.set(true)
+         state = State.CLOSED
+-        requestedKey = null
++        permissionGate.reset()
+         main.removeCallbacks(pollTask)
+         if (registered) {
+             try { context.unregisterReceiver(receiver) } catch (_: Throwable) {}
+@@ -600,6 +620,10 @@
+ 
+     companion object {
+         private const val PERMISSION_GENERATION = "rebar.usb.permissionGeneration"
++        private const val PERMISSION_KEY = "rebar.usb.permissionKey"
++        private const val PERMISSION_REQUEST = "rebar.usb.permissionRequest"
++        private const val PERMISSION_SETTLE_MS = 3_000L
++        private const val AOA_ENUMERATION_TIMEOUT_MS = 15_000L
+         private const val DISCOVERY_TIMEOUT_MS = 120_000L
+         private const val SOURCE_HOST_FALLBACK_MS = 3_500L
+         private const val POLL_MS = 350L
+--- /dev/null
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbPermissionGate.java
+@@ -0,0 +1,31 @@
++package com.abdulla.clonephone;
++
++import java.util.HashSet;
++import java.util.Set;
++
++/** One system permission dialog at a time, and one request per endpoint per attempt. */
++final class UsbPermissionGate {
++    static final int WAIT = 0, REQUEST = 1, ALREADY_ASKED = -1;
++    private final Set<String> attempted = new HashSet<>();
++    private String pending;
++    private int sequence;
++
++    int begin(String key) {
++        if (pending != null) return WAIT;
++        if (!attempted.add(key)) return ALREADY_ASKED;
++        pending = key;
++        sequence++;
++        return REQUEST;
++    }
++
++    int requestId() { return sequence; }
++    boolean isPending() { return pending != null; }
++
++    boolean complete(String key, int id) {
++        if (pending == null || !pending.equals(key) || id != sequence) return false;
++        pending = null;
++        return true;
++    }
++
++    void reset() { pending = null; attempted.clear(); sequence++; }
++}
+--- /dev/null
++++ b/ClonePhone/tests/UsbPermissionGateTest.java
+@@ -0,0 +1,29 @@
++package com.abdulla.clonephone;
++
++public final class UsbPermissionGateTest {
++    private static void check(boolean value, String message) {
++        if (!value) throw new AssertionError(message);
++    }
++    public static void main(String[] args) {
++        UsbPermissionGate gate = new UsbPermissionGate();
++        check(gate.begin("normal-device") == UsbPermissionGate.REQUEST, "first request");
++        int first = gate.requestId();
++        for (int i = 0; i < 20; i++) {
++            check(gate.begin("normal-device") == UsbPermissionGate.WAIT, "poll must not duplicate dialog");
++            check(gate.begin("aoa-device") == UsbPermissionGate.WAIT, "attach must not overlap dialog");
++        }
++        check(!gate.complete("aoa-device", first), "wrong endpoint callback ignored");
++        check(!gate.complete("normal-device", first - 1), "stale request callback ignored");
++        check(gate.isPending(), "stale result preserves pending request");
++        check(gate.complete("normal-device", first), "Allow completes matching request");
++        check(!gate.complete("normal-device", first), "duplicate callback ignored");
++        check(gate.begin("normal-device") == UsbPermissionGate.ALREADY_ASKED, "permission visibility delay must not reprompt");
++        check(gate.begin("aoa-device") == UsbPermissionGate.REQUEST, "Android can authorize new AOA identity separately");
++        int aoa = gate.requestId();
++        gate.reset();
++        check(!gate.complete("aoa-device", aoa), "old session result ignored after reset");
++        check(gate.begin("aoa-device") == UsbPermissionGate.REQUEST, "explicit user retry starts a fresh attempt");
++        check(gate.requestId() != aoa, "retry gets a distinct pending intent identity");
++        System.out.println("PASS: USB permission serialization, duplicate suppression, stale results and explicit retry");
++    }
++}

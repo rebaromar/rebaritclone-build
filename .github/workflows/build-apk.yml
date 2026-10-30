@@ -37,17 +37,12 @@ jobs:
             exit 1
           fi
 
-          # Upgrade the production source archive once, preserving all current files.
+          # Apply the permission fix once; persist this archive only after verification.
           SOURCE_VERSION=$(grep -oE "versionName '[^']+'" source/ClonePhone/app/build.gradle | head -n1 | cut -d"'" -f2)
-          if [ "$SOURCE_VERSION" = "19.19" ]; then
-            git apply --directory=source patches/rebarit-v19.20.patch
+          if [ "$SOURCE_VERSION" = "19.20" ]; then
+            git apply --directory=source patches/rebarit-v19.21.patch
             rm -f rebaritclone-source.zip
             (cd source && zip -qr -X ../rebaritclone-source.zip ClonePhone)
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add rebaritclone-source.zip
-            git commit -m "Update source archive to REBARIT CLONE 19.20"
-            git push origin HEAD:main
           fi
 
       - name: Read app version automatically
@@ -88,6 +83,8 @@ jobs:
             source/ClonePhone/app/src/main/java/com/abdulla/clonephone/NearbyProtocol.java \
             source/ClonePhone/tests/NearbyProtocolTest.java
           java -cp protocol-test-classes com.abdulla.clonephone.NearbyProtocolTest
+          javac --release 8 -encoding UTF-8 -d protocol-test-classes source/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbPermissionGate.java source/ClonePhone/tests/UsbPermissionGateTest.java
+          java -cp protocol-test-classes com.abdulla.clonephone.UsbPermissionGateTest
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -117,6 +114,18 @@ jobs:
           "$TOOLS/aapt2" dump badging "$APK" > apk-badging.txt
           grep -Fq "package: name='com.abdulla.clonephone' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" apk-badging.txt
           echo "Package, version and original 18.9 signing certificate verified."
+
+      - name: Persist verified source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- rebaritclone-source.zip; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add rebaritclone-source.zip
+            git commit -m "Update source archive to REBARIT CLONE 19.21"
+            git push origin HEAD:main
+          fi
 
       - name: Keep APK as GitHub artifact
         uses: actions/upload-artifact@v4
