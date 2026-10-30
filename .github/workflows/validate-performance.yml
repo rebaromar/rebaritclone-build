@@ -21,6 +21,8 @@ jobs:
           java-version: '17'
       - name: Extract source archive
         run: unzip -q rebaritclone-source.zip
+      - name: Apply REBARIT CLONE 19.20 patch
+        run: git apply patches/rebarit-v19.20.patch
       - name: Test pairing and band policy
         run: |
           set -euo pipefail
