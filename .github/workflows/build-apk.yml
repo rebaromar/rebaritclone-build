@@ -36,6 +36,19 @@ jobs:
             exit 1
           fi
 
+          # Upgrade the production source archive once, preserving all current files.
+          SOURCE_VERSION=$(sed -nE "s/.*versionName[[:space:]]+['\\\"]([^'\\\"]+)['\\\"].*/\\1/p" source/ClonePhone/app/build.gradle | head -n1)
+          if [ "$SOURCE_VERSION" = "19.19" ]; then
+            git apply --directory=source patches/rebarit-v19.20.patch
+            rm -f rebaritclone-source.zip
+            (cd source && zip -qr -X ../rebaritclone-source.zip ClonePhone)
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add rebaritclone-source.zip
+            git commit -m "Update source archive to REBARIT CLONE 19.20"
+            git push origin HEAD:main
+          fi
+
       - name: Read app version automatically
         shell: bash
         run: |
