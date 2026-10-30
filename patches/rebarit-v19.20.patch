@@ -1,0 +1,451 @@
+--- a/ClonePhone/app/build.gradle
++++ b/ClonePhone/app/build.gradle
+@@ -7,8 +7,8 @@
+         applicationId 'com.abdulla.clonephone'
+         minSdk 23
+         targetSdk 34
+-        versionCode 209
+-        versionName '19.19'
++        versionCode 210
++        versionName '19.20'
+     }
+     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+     kotlinOptions { jvmTarget = '17' }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
+@@ -134,7 +134,9 @@
+     private final Map<Integer,SavedFile> resumeTargets=new HashMap<>();
+     private boolean returnHomeAfterJob;
+     private final LinkedHashSet<String> cloneControllerSelectionCache=new LinkedHashSet<>();
++    private final LinkedHashSet<String> cloneControllerAppSelectionCache=new LinkedHashSet<>();
+     private final LinkedHashSet<String> cloneSourceConsentCache=new LinkedHashSet<>();
++    private final LinkedHashSet<String> cloneSourceAppConsentCache=new LinkedHashSet<>();
+     private List<Item> cloneRetryItems=new ArrayList<>();
+     private boolean restartReceiveBand,receivedRecordBackup;
+     private int receiveBand=HotspotLink.BAND_AUTO;
+@@ -1010,13 +1012,24 @@
+         cloneControllerAuthorized=false;
+         channel.write(UsbCloneProtocol.command(UsbCloneProtocol.SOURCE_SELECTION_REQUEST));
+         List<UsbCloneProtocol.Category> inventory=UsbCloneProtocol.decodeInventory(channel.read());
+-        runOnUiThread(()->{if(!isDestroyed()&&!cancelled){clonePage("cloneWaiting","پەیوەست بوو","لە مۆبایلی کۆن داتا هەڵبژێرە و گواستنەوە دەست پێ بکە",2);cloneDeviceArt(R.drawable.action_receive);LinearLayout waiting=new LinearLayout(this);waiting.setGravity(Gravity.CENTER_VERTICAL);waiting.setPadding(dp(16),dp(14),dp(16),dp(14));waiting.setBackground(box(Color.WHITE,18));ProgressBar spinner=new ProgressBar(this);waiting.addView(spinner,new LinearLayout.LayoutParams(dp(28),dp(28)));LinearLayout copy=new LinearLayout(this);copy.setOrientation(LinearLayout.VERTICAL);copy.setPadding(dp(14),0,0,0);waiting.addView(copy,new LinearLayout.LayoutParams(0,-2,1));copy.addView(label("پەیوەندی ئامادەیە",14,INK,true));status=label(cloneWords("چاوەڕێی هەڵبژاردنی داتا…"),13,BLUE,false);status.setPadding(0,dp(4),0,0);copy.addView(status);body.addView(waiting,new LinearLayout.LayoutParams(-1,-2));gap(14);note(receiveText("مۆبایلی کۆن داتای دەنێرێت؛ لەو مۆبایلە هەڵبژاردن تەواو بکە.","The old phone is preparing the selected data. Finish selection there.","الهاتف القديم يجهز البيانات المحددة. أكمل الاختيار هناك."));button(UiText.t(111),false,this::cancel);}});
+-        byte[] packet=channel.read();if(UsbCloneProtocol.is(packet,UsbCloneProtocol.DECLINED))throw new IOException("DECLINED");
+-        Set<String> selected=UsbCloneProtocol.decodeSelection(packet);
++        List<CloneAppPicker.App> apps=UsbCloneProtocol.decodeAppCatalog(channel.read());
++        UsbCloneProtocol.CloneSelection selection;
++        if(!cloneControllerSelectionCache.isEmpty()){
++            Set<String> available=new HashSet<>();for(UsbCloneProtocol.Category category:inventory)if(category.count>0)available.add(category.id);
++            LinkedHashSet<String> categories=new LinkedHashSet<>(cloneControllerSelectionCache);categories.retainAll(available);
++            Set<String> availableApps=new HashSet<>();for(CloneAppPicker.App app:apps)availableApps.add(app.packageName);
++            LinkedHashSet<String> packages=new LinkedHashSet<>(cloneControllerAppSelectionCache);packages.retainAll(availableApps);
++            if(!categories.isEmpty()&&(!categories.contains("apps")||!packages.isEmpty()))selection=new UsbCloneProtocol.CloneSelection(categories,packages);
++            else selection=chooseCloneReceiverSelection(inventory,apps);
++        }else selection=chooseCloneReceiverSelection(inventory,apps);
+         Set<String> available=new HashSet<>();for(UsbCloneProtocol.Category c:inventory)if(c.count>0)available.add(c.id);
+-        if(selected.isEmpty()||!available.containsAll(selected))throw new IOException("PROTOCOL");
+-        cloneControllerSelectionCache.clear();cloneControllerSelectionCache.addAll(selected);
+-        Arrays.fill(cloneRecordCounts,0);for(UsbCloneProtocol.Category c:inventory)if(selected.contains(c.id)){int kind="contacts".equals(c.id)?0:"calls".equals(c.id)?1:"sms".equals(c.id)?2:-1;if(kind>=0)cloneRecordCounts[kind]=c.count;}
++        Set<String> availableApps=new HashSet<>();for(CloneAppPicker.App app:apps)availableApps.add(app.packageName);
++        if(selection.categories.isEmpty()){channel.write(UsbCloneProtocol.command(UsbCloneProtocol.DECLINED));throw new IOException("DECLINED");}
++        if(!available.containsAll(selection.categories)||!availableApps.containsAll(selection.packages)||selection.categories.contains("apps")!=!selection.packages.isEmpty())throw new IOException("PROTOCOL");
++        channel.write(UsbCloneProtocol.encodeCloneSelection(selection.categories,selection.packages));
++        cloneControllerSelectionCache.clear();cloneControllerSelectionCache.addAll(selection.categories);
++        cloneControllerAppSelectionCache.clear();cloneControllerAppSelectionCache.addAll(selection.packages);
++        Arrays.fill(cloneRecordCounts,0);for(UsbCloneProtocol.Category c:inventory)if(selection.categories.contains(c.id)){int kind="contacts".equals(c.id)?0:"calls".equals(c.id)?1:"sms".equals(c.id)?2:-1;if(kind>=0)cloneRecordCounts[kind]=c.count;}
+         for(;;){
+             byte[] reply=channel.read();
+             if(UsbCloneProtocol.is(reply,UsbCloneProtocol.PREPARING)){tell("داتاکان لە مۆبایلی کۆن ئامادە دەکرێن…");continue;}
+@@ -1026,8 +1039,32 @@
+         }
+         cloneControllerAuthorized=true;try{receiveFiles(channel);}finally{cloneControllerAuthorized=false;}
+     }
++    private UsbCloneProtocol.CloneSelection chooseCloneReceiverSelection(List<UsbCloneProtocol.Category> inventory,List<CloneAppPicker.App> apps)throws Exception{
++        CountDownLatch latch=new CountDownLatch(1);approval=latch;UsbCloneProtocol.CloneSelection[] chosen={new UsbCloneProtocol.CloneSelection(new LinkedHashSet<>(),new LinkedHashSet<>())};
++        runOnUiThread(()->{
++            if(isDestroyed()||cancelled){latch.countDown();return;}
++            clonePage("cloneSelection","هەڵبژاردنی داتا","لە مۆبایلی تازە داتاکانی دڵخواز هەڵبژێرە",2);
++            cloneDeviceArt(R.drawable.action_receive);
++            root=new CloneSelectionView(this,inventory,apps,new CloneSelectionView.Actions(){
++                public void send(Set<String> categories,Set<String> packages){chosen[0]=new UsbCloneProtocol.CloneSelection(new LinkedHashSet<>(categories),new LinkedHashSet<>(packages));latch.countDown();}
++                public void back(){returnHomeAfterJob=true;latch.countDown();}
++            });setContentView(root);
++        });
++        try{latch.await();checkCancel();return chosen[0];}finally{if(approval==latch)approval=null;}
++    }
++
++    private boolean confirmCloneSourceRequest(Set<String> selected,Set<String> packages,List<UsbCloneProtocol.Category> inventory,List<CloneAppPicker.App> apps)throws Exception{
++        CountDownLatch latch=new CountDownLatch(1);approval=latch;boolean[] allowed={false};StringBuilder details=new StringBuilder();int count=0;long bytes=0;boolean unknown=false;
++        for(UsbCloneProtocol.Category c:inventory)if(selected.contains(c.id)){details.append("• ").append(CloneSelectionView.name(c.id)).append(" — ");if("apps".equals(c.id)){details.append(packages.size()).append(receiveText(" ئەپ"," apps"," تطبيق"));count+=packages.size();}else{details.append(c.count).append(receiveText(" دانە"," items"," عنصر"));count+=c.count;if(c.bytes<0)unknown=true;else bytes+=c.bytes;}details.append('\n');}
++        for(CloneAppPicker.App app:apps)if(packages.contains(app.packageName))bytes+=app.bytes;
++        String message=details+"\n"+count+receiveText(" دانە • "," items • "," عنصر • ")+TransferStats.size(bytes)+(unknown?" +":"")+receiveText("\n\nمۆبایلی تازە داوای وەرگرتنی ئەم داتایانە دەکات.","\n\nThe new phone is asking to receive this data.","\n\nالهاتف الجديد يطلب استلام هذه البيانات.");
++        runOnUiThread(()->{if(isDestroyed()||cancelled){latch.countDown();return;}approvalDialog=new AlertDialog.Builder(UiText.context(this)).setTitle(receiveText("ڕێگەدان بە ناردنی داتا","Allow data transfer","السماح بنقل البيانات")).setMessage(message).setPositiveButton(receiveText("ڕێگە دەدەم","Allow","سماح"),(d,w)->{allowed[0]=true;latch.countDown();}).setNegativeButton(receiveText("ڕەتکردنەوە","Decline","رفض"),(d,w)->latch.countDown()).setCancelable(false).create();approvalDialog.show();});
++        try{latch.await();checkCancel();return allowed[0];}finally{if(approval==latch)approval=null;approvalDialog=null;}
++    }
++
+     private void startCloneReceiverHost(int band){
+         if(busy||linking)return;
++        cloneControllerSelectionCache.clear();cloneControllerAppSelectionCache.clear();
+         phoneCloneController=true;phoneCloneSource=false;usbMode=false;cloneBand=band;cloneRequestedBand=band;cloneAutoNegotiation=band==HotspotLink.BAND_AUTO;failedCloneBands=0;clonePeerBandMask=7;hotspot.freshCredentials();
+         stopLink();
+         wifiPermission(()->{
+@@ -1075,19 +1112,21 @@
+     private void cloneSourceSession(SecureChannel channel)throws Exception{
+         byte[] request=channel.read();
+         if(!UsbCloneProtocol.is(request,UsbCloneProtocol.SOURCE_SELECTION_REQUEST))throw new IOException("Protocol mismatch: update both phones");
+-        tell("لیستی داتاکان ئامادە دەکرێت…");List<UsbCloneProtocol.Category> inventory=usbInventory();channel.write(UsbCloneProtocol.encodeInventory(inventory));
+-        Set<String> selected;
+-        boolean rememberedConsent=!cloneRetryItems.isEmpty()&&!cloneSourceConsentCache.isEmpty();
+-        if(rememberedConsent)selected=new LinkedHashSet<>(cloneSourceConsentCache);
+-        else selected=chooseCloneSourceCategories(inventory);
+-        if(selected.isEmpty()){channel.write(UsbCloneProtocol.command(UsbCloneProtocol.DECLINED));throw new IOException("DECLINED");}
+-        channel.write(UsbCloneProtocol.encodeSelection(selected));channel.write(UsbCloneProtocol.command(UsbCloneProtocol.PREPARING));
++        tell("لیستی داتاکان ئامادە دەکرێت…");List<UsbCloneProtocol.Category> inventory=usbInventory();List<CloneAppPicker.App> apps=cloneApps();channel.write(UsbCloneProtocol.encodeInventory(inventory));channel.write(UsbCloneProtocol.encodeAppCatalog(apps));
++        byte[] selectionPacket=channel.read();if(UsbCloneProtocol.is(selectionPacket,UsbCloneProtocol.DECLINED))throw new IOException("DECLINED");
++        UsbCloneProtocol.CloneSelection selection=UsbCloneProtocol.decodeCloneSelection(selectionPacket);Set<String> selected=selection.categories;
++        Set<String> available=new HashSet<>();for(UsbCloneProtocol.Category c:inventory)if(c.count>0)available.add(c.id);Set<String> availableApps=new HashSet<>();for(CloneAppPicker.App app:apps)availableApps.add(app.packageName);
++        if(selected.isEmpty()||!available.containsAll(selected)||!availableApps.containsAll(selection.packages)||selected.contains("apps")!=!selection.packages.isEmpty())throw new IOException("PROTOCOL");
++        cloneAppSelection=new LinkedHashSet<>(selection.packages);
++        boolean rememberedConsent=!cloneRetryItems.isEmpty()&&selected.equals(cloneSourceConsentCache)&&selection.packages.equals(cloneSourceAppConsentCache);
++        if(!rememberedConsent&&!confirmCloneSourceRequest(selected,selection.packages,inventory,apps)){channel.write(UsbCloneProtocol.command(UsbCloneProtocol.DECLINED));throw new IOException("DECLINED");}
++        channel.write(UsbCloneProtocol.command(UsbCloneProtocol.PREPARING));
+         runOnUiThread(()->{if(!isDestroyed()&&!cancelled){clonePage("clonePreparing","ئامادەکردنی داتا",rememberedConsent?"چاوەڕێی بەردەوامبوون لە مۆبایلی نوێ":"داتای هەڵبژێردراو بۆ گواستنەوە ئامادە دەکرێت…",2);ProgressBar p=new ProgressBar(this);body.addView(p);status=text("ئامادەکردنی داتا…",16,BLUE,false);button(UiText.t(111),false,this::cancel);}});
+         List<Item> items;
+         if(rememberedConsent)items=new ArrayList<>(cloneRetryItems);
+         else{
+             try{items=usbPrepareItems(selected);}catch(Exception e){channel.write(UsbCloneProtocol.command(UsbCloneProtocol.ERROR));throw e;}
+-            cloneRetryItems=new ArrayList<>(items);cloneSourceConsentCache.clear();cloneSourceConsentCache.addAll(selected);
++            cloneRetryItems=new ArrayList<>(items);cloneSourceConsentCache.clear();cloneSourceConsentCache.addAll(selected);cloneSourceAppConsentCache.clear();cloneSourceAppConsentCache.addAll(selection.packages);
+         }
+         if(items.isEmpty()){channel.write(UsbCloneProtocol.command(UsbCloneProtocol.ERROR));throw new IOException("SOURCE_PREPARE");}
+         channel.write(UsbCloneProtocol.command(UsbCloneProtocol.ACCEPTED));runOnUiThread(()->{if(!isDestroyed()&&!cancelled)transferPage(true);});sendFiles(channel,items);
+@@ -1611,7 +1650,7 @@
+                 }
+                 checkCancel();work.run();ok=true;message=UiText.t(159);
+             }
+-            catch(Exception e){failure=e;message=cancelled?UiText.t(160):friendly(e);}
++            catch(Exception e){failure=e;android.util.Log.e("CloneTransfer","Transfer failed",e);message=cancelled?UiText.t(160):friendly(e);}
+             catch(Throwable e){
+                 if(e instanceof VirtualMachineError)throw (VirtualMachineError)e;
+                 if(e instanceof ThreadDeath)throw (ThreadDeath)e;
+@@ -1643,7 +1682,7 @@
+     private void clearPreparedRecovery(){
+         usbCleanupPrepared();usbAutoResume=false;usbControllerAuthorized=false;usbReconnectAttempts=0;
+         usbControllerSelectionCache.clear();usbSourceConsentCache.clear();usbSourceAppSelectionCache.clear();usbControllerAppSelectionCache.clear();usbRetryItems.clear();
+-        cloneControllerSelectionCache.clear();cloneSourceConsentCache.clear();cloneRetryItems.clear();cloneAppSelection=null;
++        cloneControllerSelectionCache.clear();cloneControllerAppSelectionCache.clear();cloneSourceConsentCache.clear();cloneSourceAppConsentCache.clear();cloneRetryItems.clear();cloneAppSelection=null;
+     }
+     private void clearRecoveryState(){
+         clearPreparedRecovery();sendingId="";sendingManifest="";receivingId="";receivingManifest="";usbApprovedManifest="";
+@@ -1754,6 +1793,10 @@
+         if("DECLINED".equals(e.getMessage()))return UiText.t(164);
+         if((e.getMessage()!=null&&e.getMessage().startsWith("Protocol mismatch"))||"USB_VERSION".equals(e.getMessage()))return receiveText("بۆ ئەم گواستنەوەیە ئەپی هەردوو مۆبایل بۆ وەشانی 19.3 یان نوێتر نوێ بکەرەوە.","Update both phones to version 19.3 or later for this transfer.","حدّث التطبيق على الهاتفين إلى الإصدار 19.3 أو أحدث لهذا النقل.");
+         if("Not enough storage".equals(e.getMessage()))return receiveText("بۆشایی پێویست بۆ بەشی ماوەی فایلەکان نییە.","There is not enough free space for the remaining files.","لا توجد مساحة كافية للأجزاء المتبقية من الملفات.");
++        if("USB_SOURCE_PREPARE".equals(e.getMessage()))return receiveText("مۆبایلی کۆن نەیتوانی فایلە هەڵبژێردراوەکان ئامادە بکات؛ مۆڵەتی فایل و بۆشایی پشکنە.","The old phone could not prepare the selected files. Check its file permissions and free space.","تعذر على الهاتف القديم تجهيز الملفات المحددة. تحقق من أذونات الملفات والمساحة المتاحة.");
++        if("USB_SOURCE_NOT_ACCEPTED".equals(e.getMessage()))return receiveText("داواکاری گواستنەوە لە مۆبایلی کۆن پەسەند نەکرا؛ لەو مۆبایلە ڕێگە بدە.","The old phone has not approved this transfer yet. Approve it on that phone.","لم يوافق الهاتف القديم على النقل بعد. وافق على الهاتف القديم.");
++        if("USB_PROTOCOL".equals(e.getMessage())||"USB_PEER".equals(e.getMessage())||"USB_ROLE".equals(e.getMessage()))return receiveText("پەیوەندی USB لە دوو ئەپەکەدا یەکسان نییە؛ هەردوو مۆبایلەکە نوێ بکەرەوە و جارێکی تر پەیوەندی ببەستە.","The USB sessions do not match. Update both phones, then reconnect the cable.","جلسة USB غير متوافقة. حدّث التطبيق على الهاتفين ثم أعد توصيل الكابل.");
++        if("USB_DISCONNECTED".equals(e.getMessage()))return receiveText("پەیوەندی کێبڵ پچڕا؛ کێبڵی داتا بەکاربهێنە و USB permission پەسەند بکە.","The USB link dropped. Use a data cable and approve the USB permission prompt.","انقطع اتصال USB. استخدم كابل بيانات ووافق على إذن USB.");
+         if(e.getMessage()!=null&&e.getMessage().contains("choose local device storage"))return receiveText("بۆ گواستنەوەی فایلە گەورەکان فۆڵدەری ناوخۆی مۆبایل هەڵبژێرە.","Choose a folder on device storage for resumable large files.","اختر مجلدًا على تخزين الجهاز لنقل الملفات الكبيرة مع الاستئناف.");
+         if(usbMode)return UiText.t(165);
+         if(e instanceof java.net.SocketTimeoutException)return UiText.t(166);
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/NearbyUi.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/NearbyUi.java
+@@ -70,5 +70,14 @@
+         body.addView(text(activity, words("Wi-Fi و بلوتووس لە هەردوو مۆبایلەکە چالاک بکە. لە مۆبایلی نوێ دیارکردنی مۆبایلەکە پەسەند بکە، پاشان لێرە هەڵیبژێرە.",
+                 "Enable Wi-Fi and Bluetooth on both phones. Allow the new phone to be visible, then select it here.",
+                 "فعّل Wi-Fi وBluetooth على الهاتفين. اسمح بظهور الهاتف الجديد، ثم اختره هنا."), false));
++        Button manual = new Button(activity);
++        manual.setAllCaps(false);
++        manual.setText(words("پەیوەندی دەستی بە ناوی هۆتسپۆت (بەبێ نووسینی ڕەمز)",
++                "Connect manually by hotspot name (no password entry)",
++                "اتصال يدوي باسم نقطة الاتصال (دون كتابة كلمة مرور)"));
++        manual.setOnClickListener(v -> nearby.manualHotspot());
++        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
++        params.topMargin = dp(activity, 10);
++        body.addView(manual, params);
+     }
+ }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbCloneProtocol.kt
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbCloneProtocol.kt
+@@ -18,6 +18,8 @@
+     const val ERROR = 47
+     const val SOURCE_SELECTION_REQUEST = 48
+     const val APP_LIST_REQUEST = 49
++    const val CLONE_APP_CATALOG = 52
++    const val CLONE_SELECTION = 53
+     private const val APP_LIST = 50
+     private const val APP_SELECTION = 51
+     private const val VERSION = 3
+@@ -37,6 +39,11 @@
+         @JvmField val bytes: Long
+     )
+ 
++    class CloneSelection(
++        @JvmField val categories: LinkedHashSet<String>,
++        @JvmField val packages: LinkedHashSet<String>
++    )
++
+     @JvmStatic fun command(command: Int): ByteArray = byteArrayOf(command.toByte())
+ 
+     @JvmStatic fun `is`(packet: ByteArray?, command: Int): Boolean =
+@@ -62,6 +69,31 @@
+         return buffer.toByteArray()
+     }
+ 
++    @JvmStatic fun command(command: Int): ByteArray = byteArrayOf(command.toByte())
++
++    @JvmStatic fun `is`(packet: ByteArray?, command: Int): Boolean =
++        packet != null && packet.size == 1 && (packet[0].toInt() and 0xff) == command
++
++    @JvmStatic
++    @Throws(IOException::class)
++    fun encodeInventory(categories: List<Category>): ByteArray {
++        if (categories.size > MAX_CATEGORIES) throw IOException("USB_PROTOCOL")
++        val buffer = ByteArrayOutputStream()
++        DataOutputStream(buffer).use { out ->
++            out.writeByte(INVENTORY)
++            out.writeByte(VERSION)
++            out.writeInt(categories.size)
++            for (c in categories) {
++                if (c.id.length > MAX_ID || c.count < 0 || c.bytes < -1) throw IOException("USB_PROTOCOL")
++                out.writeUTF(c.id)
++                out.writeInt(c.count)
++                out.writeLong(c.bytes)
++            }
++            out.flush()
++        }
++        return buffer.toByteArray()
++    }
++
+     @JvmStatic
+     @Throws(IOException::class)
+     fun decodeInventory(packet: ByteArray): List<Category> {
+@@ -190,4 +222,92 @@
+         if (input.available() != 0) throw IOException("USB_PROTOCOL")
+         return result
+     }
++    @JvmStatic
++    @Throws(IOException::class)
++    fun encodeAppCatalog(apps: List<CloneAppPicker.App>): ByteArray {
++        if (apps.size > 3000) throw IOException("APP_CATALOG_TOO_LARGE")
++        val buffer = ByteArrayOutputStream()
++        DataOutputStream(buffer).use { out ->
++            out.writeByte(CLONE_APP_CATALOG)
++            out.writeByte(1)
++            out.writeInt(apps.size)
++            for (app in apps) {
++                if (app.packageName.length > 512 || app.name.length > 512 || app.bytes < 0) throw IOException("USB_PROTOCOL")
++                out.writeUTF(app.packageName)
++                out.writeUTF(app.name)
++                out.writeLong(app.bytes)
++                if (buffer.size() > SecureChannel.MAX_FRAME) throw IOException("APP_CATALOG_TOO_LARGE")
++            }
++            out.flush()
++        }
++        return buffer.toByteArray()
++    }
++
++    @JvmStatic
++    @Throws(IOException::class)
++    fun decodeAppCatalog(packet: ByteArray): ArrayList<CloneAppPicker.App> {
++        val input = DataInputStream(ByteArrayInputStream(packet))
++        if (input.readUnsignedByte() != CLONE_APP_CATALOG || input.readUnsignedByte() != 1) throw IOException("USB_PROTOCOL")
++        val count = input.readInt()
++        if (count !in 0..3000) throw IOException("USB_PROTOCOL")
++        val result = ArrayList<CloneAppPicker.App>(count)
++        repeat(count) {
++            val packageName = input.readUTF()
++            val name = input.readUTF()
++            val bytes = input.readLong()
++            if (packageName.isBlank() || packageName.length > 512 || name.length > 512 || bytes < 0) throw IOException("USB_PROTOCOL")
++            result.add(CloneAppPicker.App(packageName, name, bytes))
++        }
++        if (input.available() != 0) throw IOException("USB_PROTOCOL")
++        return result
++    }
++
++    @JvmStatic
++    @Throws(IOException::class)
++    fun encodeCloneSelection(categories: Collection<String>, packages: Collection<String>): ByteArray {
++        if (categories.size > MAX_CATEGORIES || packages.size > 3000) throw IOException("USB_PROTOCOL")
++        val buffer = ByteArrayOutputStream()
++        DataOutputStream(buffer).use { out ->
++            out.writeByte(CLONE_SELECTION)
++            out.writeByte(1)
++            out.writeInt(categories.size)
++            for (id in categories) {
++                if (id.length > MAX_ID) throw IOException("USB_PROTOCOL")
++                out.writeUTF(id)
++            }
++            out.writeInt(packages.size)
++            for (packageName in packages) {
++                if (packageName.isBlank() || packageName.length > 512) throw IOException("USB_PROTOCOL")
++                out.writeUTF(packageName)
++            }
++            out.flush()
++        }
++        if (buffer.size() > SecureChannel.MAX_FRAME) throw IOException("USB_PROTOCOL")
++        return buffer.toByteArray()
++    }
++
++    @JvmStatic
++    @Throws(IOException::class)
++    fun decodeCloneSelection(packet: ByteArray): CloneSelection {
++        val input = DataInputStream(ByteArrayInputStream(packet))
++        if (input.readUnsignedByte() != CLONE_SELECTION || input.readUnsignedByte() != 1) throw IOException("USB_PROTOCOL")
++        val categoryCount = input.readInt()
++        if (categoryCount !in 0..MAX_CATEGORIES) throw IOException("USB_PROTOCOL")
++        val categories = LinkedHashSet<String>()
++        repeat(categoryCount) {
++            val id = input.readUTF()
++            if (id.length > MAX_ID) throw IOException("USB_PROTOCOL")
++            categories.add(id)
++        }
++        val packageCount = input.readInt()
++        if (packageCount !in 0..3000) throw IOException("USB_PROTOCOL")
++        val packages = LinkedHashSet<String>()
++        repeat(packageCount) {
++            val packageName = input.readUTF()
++            if (packageName.isBlank() || packageName.length > 512) throw IOException("USB_PROTOCOL")
++            packages.add(packageName)
++        }
++        if (input.available() != 0) throw IOException("USB_PROTOCOL")
++        return CloneSelection(categories, packages)
++    }
+ }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbLink.kt
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbLink.kt
+@@ -28,6 +28,7 @@
+ import java.nio.charset.StandardCharsets
+ import java.util.concurrent.Executors
+ import java.util.concurrent.atomic.AtomicBoolean
++import java.util.concurrent.atomic.AtomicInteger
+ import java.util.UUID
+ 
+ /**
+@@ -65,6 +66,7 @@
+     @Volatile private var deadline = 0L
+     @Volatile private var discoveryStartedAt = 0L
+     @Volatile private var listener: Listener? = null
++    private val bulkRequestSize = AtomicInteger(bulkSize())
+ 
+     private var registered = false
+     private var requestedKey: String? = null
+@@ -131,6 +133,7 @@
+     fun start(preferHost: Boolean, callback: Listener) {
+         closeInternal(shutdown = false)
+         this.preferHost = preferHost
++        bulkRequestSize.set(bulkSize())
+         this.listener = callback
+         this.running = true
+         this.connected = false
+@@ -320,8 +323,8 @@
+ 
+             val pair = findBulkPair(device) ?: throw IOException("USB_BULK_INTERFACE")
+             if (!connection.claimInterface(pair.face, true)) throw IOException("USB_CLAIM_INTERFACE")
+-            val input = BulkInputStream(connection, pair.input)
+-            val output = BulkOutputStream(connection, pair.output)
++            val input = BulkInputStream(connection, pair.input, bulkRequestSize)
++            val output = BulkOutputStream(connection, pair.output, bulkRequestSize)
+             val keep = connection
+             main.post { completeHost(device, keep, input, output, token) }
+         } catch (t: Throwable) {
+@@ -493,9 +496,11 @@
+ 
+     private class BulkInputStream(
+         private val connection: UsbDeviceConnection,
+-        private val endpoint: UsbEndpoint
++        private val endpoint: UsbEndpoint,
++        private val requestSize: AtomicInteger
+     ) : InputStream() {
+         private val buffer = ByteArray(UsbLink.bulkSize())
++        private val closed = AtomicBoolean(false)
+         private var offset = 0
+         private var count = 0
+ 
+@@ -520,35 +525,64 @@
+         }
+ 
+         private fun transferIn(): Int {
+-            repeat(3) { attempt ->
+-                val n = try { connection.bulkTransfer(endpoint, buffer, buffer.size, IO_TIMEOUT_MS) } catch (_: Throwable) { -1 }
++            var failedAtSize = 0
++            var attemptsAtSize = 0
++            while (!closed.get()) {
++                val request = requestSize.get().coerceIn(MIN_BULK, buffer.size)
++                val n = try { connection.bulkTransfer(endpoint, buffer, request, IO_TIMEOUT_MS) } catch (_: Throwable) { -1 }
+                 if (n > 0) return n
+-                SystemClock.sleep(90L * (attempt + 1))
++                if (n == 0) {
++                    // Android 9+ may report a timed-out bulk read as zero. A timeout
++                    // is not proof that the cable was unplugged; keep waiting for data.
++                    SystemClock.sleep(80)
++                    continue
++                }
++                if (failedAtSize != request) { failedAtSize = request; attemptsAtSize = 0 }
++                attemptsAtSize++
++                if (attemptsAtSize >= 2 && request > MIN_BULK) {
++                    val smaller = maxOf(MIN_BULK, request / 2)
++                    requestSize.compareAndSet(request, smaller)
++                    failedAtSize = 0
++                    attemptsAtSize = 0
++                } else if (attemptsAtSize >= 3) return -1
++                SystemClock.sleep(120L * attemptsAtSize.coerceAtLeast(1))
+             }
+             return -1
+         }
+ 
+         override fun close() {
++            closed.set(true)
+             try { connection.close() } catch (_: Throwable) {}
+         }
+     }
+ 
+     private class BulkOutputStream(
+         private val connection: UsbDeviceConnection,
+-        private val endpoint: UsbEndpoint
++        private val endpoint: UsbEndpoint,
++        private val requestSize: AtomicInteger
+     ) : OutputStream() {
++        private val closed = AtomicBoolean(false)
+         override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
+ 
+         override fun write(data: ByteArray, off: Int, len: Int) {
+             var offset = off
+             var remaining = len
+             while (remaining > 0) {
+-                val request = minOf(remaining, UsbLink.bulkSize())
++                if (closed.get()) throw IOException("USB_DISCONNECTED")
++                var request = minOf(remaining, requestSize.get().coerceAtLeast(MIN_BULK))
+                 var n = -1
+-                for (attempt in 0 until 3) {
++                var attempts = 0
++                while (attempts < 3 && n <= 0) {
+                     n = try { connection.bulkTransfer(endpoint, data, offset, request, IO_TIMEOUT_MS) } catch (_: Throwable) { -1 }
+                     if (n > 0) break
+-                    SystemClock.sleep(90L * (attempt + 1))
++                    attempts++
++                    if (attempts >= 2 && request > MIN_BULK) {
++                        request = maxOf(MIN_BULK, request / 2)
++                        requestSize.set(minOf(requestSize.get(), request))
++                        attempts = 0
++                    }
++                    SystemClock.sleep(100L * attempts.coerceAtLeast(1))
++                    if (closed.get()) throw IOException("USB_DISCONNECTED")
+                 }
+                 if (n <= 0) throw IOException("USB_DISCONNECTED")
+                 offset += n
+@@ -559,6 +593,7 @@
+         override fun flush() = Unit
+ 
+         override fun close() {
++            closed.set(true)
+             try { connection.close() } catch (_: Throwable) {}
+         }
+     }
+@@ -576,6 +611,7 @@
+         // measured throughput on the target phones and made progress feel bursty.
+         private const val MODERN_BULK = 256 * 1024
+         private const val LEGACY_BULK = 16 * 1024
++        private const val MIN_BULK = 16 * 1024
+ 
+         private const val AOA_GET_PROTOCOL = 51
+         private const val AOA_SEND_IDENT = 52
