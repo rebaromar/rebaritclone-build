@@ -197,11 +197,11 @@
 +    }
 +    static LinearLayout appBar(Context c,String version,Runnable back,View.OnClickListener menu){
 +        LinearLayout bar=new LinearLayout(c);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(0,dp(c,6),0,dp(c,10));
-+        if(back!=null){TextView arrow=text(c,UiText.direction()==View.LAYOUT_DIRECTION_RTL?"›":"‹",30,INK,false);arrow.setGravity(Gravity.CENTER);arrow.setBackground(press(c,surface(c,Color.WHITE,LINE,15)));arrow.setContentDescription(words("گەڕانەوە","Back","رجوع"));bar.addView(arrow,new LinearLayout.LayoutParams(dp(c,44),dp(c,44)));arrow.setOnClickListener(v->back.run());}
++        if(back!=null){TextView arrow=text(c,UiText.direction()==View.LAYOUT_DIRECTION_RTL?"›":"‹",30,INK,false);arrow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP,30);arrow.setGravity(Gravity.CENTER);arrow.setBackground(press(c,surface(c,Color.WHITE,LINE,15)));arrow.setContentDescription(words("گەڕانەوە","Back","رجوع"));bar.addView(arrow,new LinearLayout.LayoutParams(dp(c,44),dp(c,44)));arrow.setOnClickListener(v->back.run());}
 +        LinearLayout words=new LinearLayout(c);words.setOrientation(LinearLayout.VERTICAL);words.setPadding(dp(c,12),0,dp(c,8),0);bar.addView(words,new LinearLayout.LayoutParams(0,-2,1));
 +        TextView brand=text(c,"REBARIT CLONE",16,INK,true);brand.setTextDirection(View.TEXT_DIRECTION_LTR);words.addView(brand);
 +        TextView build=text(c,"v"+version,11,MUTED,false);build.setTextDirection(View.TEXT_DIRECTION_LTR);words.addView(build);
-+        if(menu!=null){TextView dots=text(c,"⋮",26,INK,true);dots.setGravity(Gravity.CENTER);dots.setContentDescription(UiText.t(262));dots.setBackground(press(c,surface(c,Color.WHITE,LINE,15)));bar.addView(dots,new LinearLayout.LayoutParams(dp(c,44),dp(c,44)));dots.setOnClickListener(menu);}
++        if(menu!=null){TextView dots=text(c,"⋮",26,INK,true);dots.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP,26);dots.setGravity(Gravity.CENTER);dots.setContentDescription(UiText.t(262));dots.setBackground(press(c,surface(c,Color.WHITE,LINE,15)));bar.addView(dots,new LinearLayout.LayoutParams(dp(c,44),dp(c,44)));dots.setOnClickListener(menu);}
 +        return bar;
 +    }
 +
@@ -281,7 +281,7 @@
          }
          LinearLayout footer=new LinearLayout(activity);footer.setOrientation(VERTICAL);footer.setPadding(0,dp(12),0,0);addView(footer,new LayoutParams(-1,-2));summary=text("",14,INK,true);summary.setPadding(0,0,0,dp(10));footer.addView(summary);
 -        send=new Button(activity);send.setAllCaps(false);send.setText(words("دەستپێکردنی گواستنەوە","Start transfer","بدء النقل"));send.setTextColor(Color.WHITE);send.setTextSize(16);send.setTypeface(null,Typeface.BOLD);send.setBackground(box(BLUE,14));footer.addView(send,new LayoutParams(-1,dp(54)));
-+        send=new Button(activity);send.setAllCaps(false);send.setText(words("دەستپێکردنی گواستنەوە","Start transfer","بدء النقل"));send.setTextColor(Color.WHITE);send.setTextSize(16);send.setTypeface(null,Typeface.BOLD);CloneDesign.button(send,true);footer.addView(send,new LayoutParams(-1,dp(58)));
++        send=new Button(activity);send.setAllCaps(false);send.setText(words("دەستپێکردنی گواستنەوە","Start transfer","بدء النقل"));send.setTextColor(Color.WHITE);send.setTextSize(16);send.setTypeface(null,Typeface.BOLD);CloneDesign.button(send,true);footer.addView(send,new LayoutParams(-1,-2));
          send.setOnClickListener(v->{Set<String> chosen=selection();if(!chosen.isEmpty()){send.setEnabled(false);all.setEnabled(false);for(CheckBox check:checks.values())check.setEnabled(false);actions.send(chosen,new LinkedHashSet<>(appPackages));}});
          all.setOnClickListener(v->{boolean complete=true;for(CheckBox check:checks.values())if(check.isEnabled()&&!check.isChecked())complete=false;for(CheckBox check:checks.values())if(check.isEnabled())check.setChecked(!complete);refresh();});refresh();
      }
@@ -600,7 +600,19 @@
          LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(16));body.addView(card,cp);
          TextView icon=label(glyph,30,NIGHT,true);icon.setGravity(Gravity.CENTER);icon.setBackground(box(accent,15));card.addView(icon,new LinearLayout.LayoutParams(dp(50),dp(54)));
          LinearLayout words=new LinearLayout(this);words.setOrientation(1);words.setPadding(dp(16),0,dp(10),0);card.addView(words,new LinearLayout.LayoutParams(0,-2,1));words.addView(label(title,21,LIGHT,true));words.addView(label(description,13,0xffa9bdca,false));card.setFocusable(true);card.setOnClickListener(v->click.run());
-@@ -703,7 +593,7 @@
+@@ -666,9 +556,8 @@
+     }
+     private void categories(){
+         page("categories",UiText.t(14),UiText.t(15),2);
+-        summaryCard("✦ REBARIT CLONE • FULL VIP");
+-        button("⚡ Smart Clone",true,()->connectPage());
+-        button("Transfer History",false,()->showTransferHistory());
++        button(receiveText("پەیوەندی بە مۆبایلێکی تر","Connect to another phone","الاتصال بهاتف آخر"),true,()->connectPage());
++        button(receiveText("مێژووی گواستنەوە","Transfer history","سجل النقل"),false,()->showTransferHistory());
+ 
+         section(UiText.t(284));
+         category("photos",UiText.t(16),UiText.t(17),"▧");
+@@ -703,7 +592,7 @@
      private void chooseApps(){if(!busy)openSendPicker();}
      private void openSendPicker(){
          closeGallery();screen="sendPicker";
@@ -609,7 +621,7 @@
          getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
          List<SendFilePicker.Entry> initial=new ArrayList<>();
          for(Map.Entry<String,List<Item>> group:groups.entrySet())if(!group.getKey().equals("apps")&&!(group.getKey().equals("contacts")&&!pickerContacts.isEmpty()))for(Item i:group.getValue()){
-@@ -1544,9 +1434,9 @@
+@@ -1544,9 +1433,9 @@
          if(phoneCloneSource||phoneCloneController)clonePage("transfer",sending?UiText.t(114):UiText.t(115),"داتاکان بە پەیوەندیی ڕاستەوخۆ دەگوازرێنەوە",3);
          else page("transfer",sending?UiText.t(114):UiText.t(115),UiText.t(116),3);
  
@@ -622,7 +634,7 @@
          Arrays.fill(categoryProgress,null);
          if(transferStats!=null){
              for(int kind:new int[]{0,1,4,8,3,2,5,6,7})if(transferStats.total(kind)>0){categoryProgress[kind]=summaryCard(categoryProgressText(kind,0,-1));categoryProgress[kind].setTextSize(14);gap(8);}
-@@ -1557,7 +1447,7 @@
+@@ -1557,7 +1446,7 @@
      private void resultPage(boolean success,String message,boolean receiving){
          transferNotification(success?UiText.t(125):UiText.t(126),0,true);
          if(phoneCloneSource||phoneCloneController)clonePage("result",success?UiText.t(125):UiText.t(126),message,0);else page("result",success?UiText.t(125):UiText.t(126),message,0);gap(24);
@@ -631,7 +643,7 @@
          text(completed+UiText.t(127),22,INK,true).setGravity(Gravity.CENTER);note(UiText.t(128));
          if(transferStats!=null){
              summaryCard(UiText.t(253)+(transferStats.total(0)-transferStats.remaining(0,completed)));gap(8);
-@@ -1637,7 +1527,7 @@
+@@ -1637,7 +1526,7 @@
          String info=UiText.t(144)+all+UiText.t(145)+TransferStats.size(moved)+
              UiText.t(155)+String.format(Locale.US,"%.1f MB/s",rate/1000000.0)+UiText.t(156)+(remaining==0&&done<count?UiText.t(157):eta(remaining,rate,elapsed));
          final String display=info;final int currentKind=force?-1:TransferStats.kind(item.name,item.mime);
@@ -748,7 +760,7 @@
 -            final String id=ids[i];TextView t=text(labels[i],15,DIM,true);t.setGravity(Gravity.CENTER);
 -            tabRow.addView(t,new LayoutParams(dp(86),-1));tabs.put(id,t);
 +            final String id=ids[i];TextView t=text(labels[i],13,DIM,true);t.setGravity(Gravity.CENTER);
-+            t.setPadding(dp(12),dp(9),dp(12),dp(9));LayoutParams tabParams=new LayoutParams(-2,dp(42));tabParams.setMargins(dp(2),dp(5),dp(2),dp(5));tabRow.addView(t,tabParams);tabs.put(id,t);
++            t.setPadding(dp(12),dp(9),dp(12),dp(9));t.setMinimumHeight(dp(44));LayoutParams tabParams=new LayoutParams(-2,-2);tabParams.setMargins(dp(2),dp(5),dp(2),dp(5));tabRow.addView(t,tabParams);tabs.put(id,t);
              t.setOnClickListener(v->{if(tab.equals(id))return;tab=id;packages=false;folderFilter=null;fileFilter="";collapsed.clear();load();});
          }
 -        segments=new LinearLayout(a);segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(shape(0xfff0f0f2,15));

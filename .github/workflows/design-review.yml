@@ -36,7 +36,11 @@ jobs:
           set -euo pipefail
           sdkmanager "emulator" "system-images;android-35;google_apis;x86_64" >/dev/null
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
-          printf 'no\n' | avdmanager create avd --name design --package "system-images;android-35;google_apis;x86_64" --device pixel_6 --force
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/rebar-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          printf 'no\n' | avdmanager create avd --name design --package "system-images;android-35;google_apis;x86_64" --device pixel_6 --path "$ANDROID_AVD_HOME/design.avd" --force
+          test -f "$ANDROID_AVD_HOME/design.avd/config.ini"
+          printf 'avd.ini.encoding=UTF-8\npath=%s\ntarget=android-35\n' "$ANDROID_AVD_HOME/design.avd" > "$ANDROID_AVD_HOME/design.ini"
           "$ANDROID_HOME/emulator/emulator" -avd design -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-metrics > /tmp/design-emulator.log 2>&1 &
           timeout 180 adb wait-for-device || { cat /tmp/design-emulator.log; exit 1; }
           timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 2; done'
