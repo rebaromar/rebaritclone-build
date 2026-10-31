@@ -1,0 +1,225 @@
+diff --git a/ClonePhone/app/build.gradle b/ClonePhone/app/build.gradle
+index d2c1c23..998bfa5 100644
+--- a/ClonePhone/app/build.gradle
++++ b/ClonePhone/app/build.gradle
+@@ -7,8 +7,8 @@ android {
+         applicationId 'com.abdulla.clonephone'
+         minSdk 23
+         targetSdk 34
+-        versionCode 212
+-        versionName '19.22'
++        versionCode 213
++        versionName '19.23'
+     }
+     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+     kotlinOptions { jvmTarget = '17' }
+diff --git a/ClonePhone/app/src/debug/java/com/abdulla/clonephone/DesignPreviewActivity.java b/ClonePhone/app/src/debug/java/com/abdulla/clonephone/DesignPreviewActivity.java
+index 3965a3a..5c3a40d 100644
+--- a/ClonePhone/app/src/debug/java/com/abdulla/clonephone/DesignPreviewActivity.java
++++ b/ClonePhone/app/src/debug/java/com/abdulla/clonephone/DesignPreviewActivity.java
+@@ -7,6 +7,7 @@ import java.util.*;
+ /** Emulator-only visual fixtures. This source set is excluded from release APKs. */
+ public final class DesignPreviewActivity extends MainActivity {
+     @Override public void onCreate(Bundle state){
++        getSharedPreferences("permission_onboarding",0).edit().putBoolean("completed",true).commit();
+         String language=getIntent().getStringExtra("language");UiText.select(this,language==null?"ckb":language);
+         super.onCreate(state);
+         try{
+diff --git a/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java b/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
+index 32b291c..58b3df5 100644
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
+@@ -162,6 +162,7 @@ public class MainActivity extends Activity {
+     private volatile Pairing pendingPeer;
+     private String hostPairCode="";
+     private boolean hostRecoveryInProgress;
++    private boolean startupPermissionFlow;
+     private boolean senderPaired;
+     private SecureChannel selectedUsbChannel;
+     private Runnable afterWifiPermission,afterCloneLinkSettings;
+@@ -172,22 +173,20 @@ public class MainActivity extends Activity {
+     private final List<File> usbPreparedTemps=new ArrayList<>();
+     private long lastNotification;
+     private static final String TRANSFER_CHANNEL="transfer";
+-    private void startUsbSourcePermissions(){
+-        if(setupActive)return;
+-        Context themed=UiText.context(this);
+-        new AlertDialog.Builder(themed)
+-            .setTitle("ڕەزامەندی بۆ ئەم گواستنەوەیە")
+-            .setMessage("مۆبایلی تازە داتا و ئەپەکان هەڵدەبژێرێت. یەکجار ڕێگە بدە؛ گواستنەوە بە خۆکار دەست پێدەکات. لە دوای پچڕانی کێبڵ دەتوانیت بەردەوام بیت یان لە سەرەتاوە دەست پێبکەیت.")
+-            .setPositiveButton("ڕێگە دەدەم",(d,w)->beginUsbSourcePermissions())
+-            .setNegativeButton(UiText.t(29),(d,w)->{})
+-            .setCancelable(false).show();
+-    }
++    private void startUsbSourcePermissions(){if(!setupActive)beginUsbSourcePermissions();}
+     private void beginUsbSourcePermissions(){
+         usbSourceSessionAccepted=true;
+         usbSourcePermissionFlow=true;setupReceiving=false;setupActive=true;setupWaiting=false;setupIndex=0;
+         setupSteps=PermissionPlan.forUsbSource(Build.VERSION.SDK_INT);
+         page("permissions",UiText.t(246),"مۆبایلی کۆن: تەنها مۆڵەتە پێویستەکان بۆ خوێندنەوەی داتاکان",0);
+-        note("مۆبایلی تازە دیاری دەکات چی وەربگرێت. ڕەزامەندیی ئەم گواستنەوەیە پێشتر وەرگیرا.");
++        note("مۆبایلی تازە دیاری دەکات چی وەربگرێت. مۆڵەتەکانی Android پەسەند بکە.");
++        nextPermission();
++    }
++    private void startStartupPermissions(){
++        if(isDestroyed()||busy||setupActive)return;
++        startupPermissionFlow=true;setupActive=true;setupWaiting=false;setupIndex=0;
++        setupSteps=PermissionPlan.forStartup(Build.VERSION.SDK_INT);
++        page("permissions",UiText.t(246),receiveText("مۆڵەتە پێویستەکان دانە بە دانە پەسەند بکە. دەتوانیت مۆڵەتێک ڕەت بکەیتەوە.","Review the Android permissions one at a time. You can deny any permission.","راجع أذونات Android واحدًا تلو الآخر. يمكنك رفض أي إذن."),0);
+         nextPermission();
+     }
+     private void startPermissions(boolean receiving){
+@@ -216,15 +215,16 @@ public class MainActivity extends Activity {
+         for(String[] step:setupSteps)for(String permission:step)if(!permission.equals(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)&&checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED)missing=true;
+         NotificationManager manager=getSystemService(NotificationManager.class);
+         if(manager!=null&&!manager.areNotificationsEnabled())missing=true;
+-        if(!missing){finishPermissions();return;}
++        if(startupPermissionFlow||!missing){finishPermissions();return;}
+         page("permissions",UiText.t(246),UiText.t(249),0);
+         note(UiText.t(248));
+         button(UiText.t(250),false,()->{try{startActivityForResult(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())),SETUP_SETTINGS);}catch(ActivityNotFoundException e){toast(UiText.t(249));}});
+         button(UiText.t(28),true,()->finishPermissions());
+-        button(UiText.t(29),false,()->{setupActive=false;usbSourcePermissionFlow=false;home();});
++        button(UiText.t(29),false,()->{setupActive=false;usbSourcePermissionFlow=false;startupPermissionFlow=false;home();});
+     }
+     private void finishPermissions(){
+         boolean receiving=setupReceiving;setupActive=false;setupWaiting=false;
++        if(startupPermissionFlow){startupPermissionFlow=false;getSharedPreferences("permission_onboarding",0).edit().putBoolean("completed",true).apply();home();handleUsbLaunch(getIntent());return;}
+         if(usbSourcePermissionFlow){usbSourcePermissionFlow=false;startUsb(false);return;}
+         if(receiving){
+             if(Build.VERSION.SDK_INT<29&&folder==null){resumeFolder=true;chooseFolder();return;}
+@@ -303,7 +303,7 @@ public class MainActivity extends Activity {
+         Item(){}
+         Item(Uri u,String n,String m,long s){uri=u;name=n;mime=m;size=s;}
+     }
+-    @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);UiText.init(this);hotspot=new HotspotLink(this);usb=new UsbLink(this);onlineUpdate=new OnlineUpdate(this,()->busy);restoreSenderCheckpoint();home();handleUsbLaunch(getIntent());}
++    @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);UiText.init(this);hotspot=new HotspotLink(this);usb=new UsbLink(this);onlineUpdate=new OnlineUpdate(this,()->busy);restoreSenderCheckpoint();home();if(!getSharedPreferences("permission_onboarding",0).getBoolean("completed",false))main.post(this::startStartupPermissions);else handleUsbLaunch(getIntent());}
+     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);handleUsbLaunch(intent);}
+     private void handleUsbLaunch(Intent intent){
+         try{
+@@ -311,7 +311,7 @@ public class MainActivity extends Activity {
+             if(!UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(a)&&!UsbManager.ACTION_USB_ACCESSORY_ATTACHED.equals(a))return;
+             main.postDelayed(()->{
+                 try{
+-                    if(isDestroyed()||busy||linking||usbAutoResume||"usb".equals(screen)||"usbWaiting".equals(screen))return;
++                    if(isDestroyed()||busy||setupActive||linking||usbAutoResume||"usb".equals(screen)||"usbWaiting".equals(screen))return;
+                     // USB system intents must never crash the Activity. The user still chooses
+                     // the logical new-phone/old-phone role inside REBARIT CLONE.
+                     usbRoles();
+@@ -411,7 +411,7 @@ public class MainActivity extends Activity {
+     private OnlineUpdate onlineUpdate;
+     @Override public void onWindowFocusChanged(boolean focused){
+         super.onWindowFocusChanged(focused);if(!focused)return;
+-        boolean dark="usbRoles".equals(screen);int color=dark?NIGHT:BG;
++        boolean dark=false;int color=BG;
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+         getWindow().setStatusBarColor(color);getWindow().setNavigationBarColor(color);
+         if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=getWindow().getInsetsController();if(controller!=null){int appearance=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;controller.setSystemBarsAppearance(dark?0:appearance,appearance);}}
+@@ -522,23 +522,18 @@ public class MainActivity extends Activity {
+     private void cloneRoleCard(String title,String sub,String glyph,int color,Runnable click){
+         LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(22),dp(18),dp(22),dp(18));card.setBackground(CloneDesign.press(this,CloneDesign.surface(this,Color.WHITE,CloneDesign.LINE,22)));
+         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,dp(16));body.addView(card,lp);
+-        LinearLayout words=new LinearLayout(this);words.setOrientation(1);card.addView(words,new LinearLayout.LayoutParams(0,-2,1));words.addView(label(title,21,INK,true));TextView st=label(sub,14,MUTED,false);st.setPadding(0,dp(8),0,0);words.addView(st);
++        LinearLayout words=new LinearLayout(this);words.setOrientation(1);card.addView(words,new LinearLayout.LayoutParams(0,-2,1));words.addView(label(title,21,INK,true));if(!sub.isEmpty()){TextView st=label(sub,14,MUTED,false);st.setPadding(0,dp(8),0,0);words.addView(st);}
+         ImageView icon=new ImageView(this);icon.setImageResource(glyph.equals("↓")?R.drawable.action_receive:R.drawable.action_send);icon.setColorFilter(color);icon.setPadding(dp(12),dp(12),dp(12),dp(12));icon.setBackground(box(0xffeef4ff,18));card.addView(icon,new LinearLayout.LayoutParams(dp(64),dp(64)));card.setMinimumHeight(dp(106));card.setOnClickListener(v->click.run());
+     }
+     private void usbRoles(){
+         if(busy)return;
+         stopLink();usbMode=true;senderPaired=false;selectedUsbChannel=null;usbReconnectAttempts=0;selection.clear();usbSourceAppSelectionCache.clear();usbControllerAppSelectionCache.clear();usbApprovedManifest="";usbControllerAuthorized=false;usbSourceSessionAccepted=false;receivingBatch=null;clearUsbResumeState();
+-        darkScreen("usbRoles",UiText.t(312));
+-        gap(18);
+-        text(UiText.t(315),27,LIGHT,true).setGravity(Gravity.CENTER);
+-        gap(8);
+-        text(UiText.t(316),13,0xff8ea6b8,false).setGravity(Gravity.CENTER);
+-        gap(24);
+-        darkRole(receiveText("مۆبایلی تازە — وەرگر","NEW PHONE — Receive","الهاتف الجديد — استقبال"),receiveText("لێرە داتا و ئەپەکانی مۆبایلی کۆن هەڵبژێرە","Choose data and apps from the old phone here","اختر هنا بيانات وتطبيقات الهاتف القديم"),"↓",0xff9690ff,()->usbReceiverSetup());
+-        darkRole(receiveText("مۆبایلی کۆن — نێرەر","OLD PHONE — Send","الهاتف القديم — إرسال"),receiveText("ناردن دەست پێبکە؛ لە مۆبایلی تازە هەڵبژاردن دەکرێت","Start sending; selections happen on the new phone","ابدأ الإرسال؛ الاختيار يتم على الهاتف الجديد"),"↑",0xff35d8b4,this::startUsbSourcePermissions);
+-        gap(12);
+-        text(receiveText("مۆبایلی نوێ وەرگرە؛ مۆبایلی کۆن نێرەرە. لیستی ئەپەکان تەنها لە وەرگر دەردەکەوێت.","Use the new phone as receiver and the old phone as sender. The app list appears only on the receiver.","اجعل الهاتف الجديد مستقبلاً والقديم مرسلاً. تظهر قائمة التطبيقات على الهاتف المستقبل فقط."),12,0xff8ea6b8,false).setGravity(Gravity.CENTER);
++        clonePage("usbRoles",receiveText("گواستنەوە بە USB","USB transfer","النقل عبر USB"),receiveText("ڕۆڵی ئەم مۆبایلە هەڵبژێرە","Choose this phone’s role","اختر دور هذا الهاتف"),0);
++        body.addView(new CloneDesign.Devices(this,false),new LinearLayout.LayoutParams(-1,dp(174)));gap(16);
++        cloneRoleCard(receiveText("مۆبایلی تازە","New phone","الهاتف الجديد"),"","↓",BLUE,this::usbReceiverSetup);
++        cloneRoleCard(receiveText("مۆبایلی کۆن","Old phone","الهاتف القديم"),"","↑",0xff168e78,this::startUsbSourcePermissions);
+     }
++
+     private void darkRole(String title,String description,String glyph,int accent,Runnable click){
+         LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(18),dp(22),dp(18),dp(22));card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),CloneDesign.surface(this,0xff192e54,0xff31466c,22),null));
+         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(16));body.addView(card,cp);
+diff --git a/ClonePhone/app/src/main/java/com/abdulla/clonephone/PermissionPlan.java b/ClonePhone/app/src/main/java/com/abdulla/clonephone/PermissionPlan.java
+index 4fd9c27..cf3881f 100644
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/PermissionPlan.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/PermissionPlan.java
+@@ -2,6 +2,12 @@ package com.abdulla.clonephone;
+ import java.util.*;
+ /** SDK/role-dependent sequence. No file access or consent is inferred here. */
+ public final class PermissionPlan {
++    public static List<String[]> forStartup(int sdk){
++        // Preserve Android's related location, photo and Bluetooth permission groups.
++        List<String[]> result=forRole(sdk,false);
++        if(sdk>=31)result.add(new String[]{p("BLUETOOTH_CONNECT"),p("BLUETOOTH_SCAN"),p("BLUETOOTH_ADVERTISE")});
++        return result;
++    }
+     private static String p(String name){return "android.permission."+name;}
+     public static List<String[]> forUsbSource(int sdk){
+         List<String[]> steps=new ArrayList<>();
+diff --git a/ClonePhone/tests/PermissionPlanTest.java b/ClonePhone/tests/PermissionPlanTest.java
+index bf3607b..b9bc52a 100644
+--- a/ClonePhone/tests/PermissionPlanTest.java
++++ b/ClonePhone/tests/PermissionPlanTest.java
+@@ -1,20 +1,38 @@
+-import com.abdulla.clonephone.PermissionPlan;
++package com.abdulla.clonephone;
++
+ import java.util.*;
+-public class PermissionPlanTest {
+- static Set<String> permissions(int sdk,boolean receiver){Set<String> all=new HashSet<>();for(String[] step:PermissionPlan.forRole(sdk,receiver)){if(step.length==0)throw new AssertionError("empty prompt");for(String p:step){if(!all.add(p))throw new AssertionError("duplicate request");}}return all;}
+- static void has(Set<String> p,String name,boolean expected){if(p.contains("android.permission."+name)!=expected)throw new AssertionError(name+" "+expected);}
+- public static void main(String[] args){
+-  for(int sdk:new int[]{26,28,29,31,32,33,34,35,36})for(boolean receiver:new boolean[]{true,false}){
+-   Set<String> p=permissions(sdk,receiver);
+-   has(p,"POST_NOTIFICATIONS",sdk>=33);has(p,"NEARBY_WIFI_DEVICES",sdk>=33);
+-   has(p,"ACCESS_FINE_LOCATION",sdk<33);has(p,"ACCESS_COARSE_LOCATION",sdk<33);
+-   has(p,"READ_EXTERNAL_STORAGE",!receiver&&sdk<33);
+-   has(p,"READ_MEDIA_IMAGES",!receiver&&sdk>=33);has(p,"READ_MEDIA_VIDEO",!receiver&&sdk>=33);has(p,"READ_MEDIA_AUDIO",!receiver&&sdk>=33);
+-   has(p,"READ_MEDIA_VISUAL_USER_SELECTED",!receiver&&sdk>=34);
+-   for(String permission:new String[]{"CAMERA","READ_CONTACTS","READ_CALL_LOG"})has(p,permission,!receiver);
+-   has(p,"READ_SMS",false);
+-   for(String permission:new String[]{"SYSTEM_ALERT_WINDOW","MANAGE_EXTERNAL_STORAGE","WRITE_SETTINGS","SEND_SMS"})has(p,permission,false);
+-  }
+-  System.out.println("PASS: receiver/sender least-required permissions, SDK boundaries 26–36, no duplicate prompts, no SMS-read/protected-file/overlay/SMS-send permissions");
+- }
++
++public final class PermissionPlanTest {
++    private static void check(boolean condition, String message) {
++        if (!condition) throw new AssertionError(message);
++    }
++
++    private static boolean includes(List<String[]> steps, String name) {
++        for (String[] group : steps) for (String permission : group)
++            if (permission.equals("android.permission." + name)) return true;
++        return false;
++    }
++
++    private static void verify(int sdk) {
++        List<String[]> steps = PermissionPlan.forStartup(sdk);
++        Set<String> seen = new HashSet<>();
++        for (String[] group : steps) for (String permission : group)
++            check(seen.add(permission), "duplicated startup permission " + permission);
++        check(includes(steps, "READ_CONTACTS"), "contacts missing");
++        check(includes(steps, "CAMERA"), "camera missing");
++        check(includes(steps, "BLUETOOTH_CONNECT") == (sdk >= 31), "Bluetooth SDK boundary");
++        check(includes(steps, "READ_MEDIA_VISUAL_USER_SELECTED") == (sdk >= 34), "photo SDK boundary");
++        check(includes(steps, "NEARBY_WIFI_DEVICES") == (sdk >= 33), "Wi-Fi SDK boundary");
++        check(includes(steps, "READ_EXTERNAL_STORAGE") == (sdk < 33), "storage SDK boundary");
++        if (sdk < 33) {
++            boolean grouped = false;
++            for (String[] group : steps) if (Arrays.asList(group).contains("android.permission.ACCESS_FINE_LOCATION"))
++                grouped = Arrays.asList(group).contains("android.permission.ACCESS_COARSE_LOCATION");
++            check(grouped, "location permission grouping");
++        }
++    }
++
++    public static void main(String[] args) {
++        for (int sdk : new int[]{23, 29, 31, 32, 33, 34, 35}) verify(sdk);
++    }
+ }

@@ -37,10 +37,10 @@ jobs:
             exit 1
           fi
 
-          # Apply the native redesign once; persist this archive only after verification.
+          # Apply the reviewed update once; persist this archive only after verification.
           SOURCE_VERSION=$(grep -oE "versionName '[^']+'" source/ClonePhone/app/build.gradle | head -n1 | cut -d"'" -f2)
-          if [ "$SOURCE_VERSION" = "19.21" ]; then
-            git apply --directory=source patches/rebarit-v19.22.patch
+          if [ "$SOURCE_VERSION" = "19.22" ]; then
+            git apply --directory=source patches/rebarit-v19.23.patch
             rm -f rebaritclone-source.zip
             (cd source && zip -qr -X ../rebaritclone-source.zip ClonePhone)
           fi
@@ -85,6 +85,8 @@ jobs:
           java -cp protocol-test-classes com.abdulla.clonephone.NearbyProtocolTest
           javac --release 8 -encoding UTF-8 -d protocol-test-classes source/ClonePhone/app/src/main/java/com/abdulla/clonephone/UsbPermissionGate.java source/ClonePhone/tests/UsbPermissionGateTest.java
           java -cp protocol-test-classes com.abdulla.clonephone.UsbPermissionGateTest
+          javac --release 8 -encoding UTF-8 -d protocol-test-classes source/ClonePhone/app/src/main/java/com/abdulla/clonephone/PermissionPlan.java source/ClonePhone/tests/PermissionPlanTest.java
+          java -cp protocol-test-classes com.abdulla.clonephone.PermissionPlanTest
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -128,7 +130,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add rebaritclone-source.zip
-            git commit -m "Update source archive to REBARIT CLONE 19.22"
+            git commit -m "Update source archive to REBARIT CLONE 19.23"
             git push origin HEAD:main
           fi
 
@@ -157,3 +159,4 @@ jobs:
             gh release create "$TAG" "$APK" --title "REBARIT CLONE ${VERSION_NAME}" \
               --notes-file release-notes.txt --repo "$GITHUB_REPOSITORY"
           fi
+
