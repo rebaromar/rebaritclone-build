@@ -1,0 +1,912 @@
+--- a/ClonePhone/app/build.gradle
++++ b/ClonePhone/app/build.gradle
+@@ -7,8 +7,8 @@
+         applicationId 'com.abdulla.clonephone'
+         minSdk 23
+         targetSdk 34
+-        versionCode 211
+-        versionName '19.21'
++        versionCode 212
++        versionName '19.22'
+     }
+     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+     kotlinOptions { jvmTarget = '17' }
+--- /dev/null
++++ b/ClonePhone/app/src/debug/AndroidManifest.xml
+@@ -0,0 +1,6 @@
++<manifest xmlns:android="http://schemas.android.com/apk/res/android">
++    <application>
++        <activity android:name=".DesignPreviewActivity" android:exported="true" />
++        <activity android:name=".InstallPreviewActivity" android:exported="false" />
++    </application>
++</manifest>
+--- /dev/null
++++ b/ClonePhone/app/src/debug/java/com/abdulla/clonephone/DesignPreviewActivity.java
+@@ -0,0 +1,34 @@
++package com.abdulla.clonephone;
++
++import android.os.Bundle;
++import java.lang.reflect.*;
++import java.util.*;
++
++/** Emulator-only visual fixtures. This source set is excluded from release APKs. */
++public final class DesignPreviewActivity extends MainActivity {
++    @Override public void onCreate(Bundle state){
++        String language=getIntent().getStringExtra("language");UiText.select(this,language==null?"ckb":language);
++        super.onCreate(state);
++        try{
++            String screen=getIntent().getStringExtra("screen");
++            if("picker".equals(screen))invoke("openSendPicker",new Class<?>[]{});
++            else if("scan".equals(screen))startActivity(new android.content.Intent(this,ScanActivity.class));
++            else if("installer".equals(screen))startActivity(new android.content.Intent(this,InstallPreviewActivity.class));
++            else if("roles".equals(screen))invoke("deviceRoles",new Class<?>[]{boolean.class},false);
++            else if("usb".equals(screen))invoke("usbRoles",new Class<?>[]{});
++            else if("selection".equals(screen)){
++                List<UsbCloneProtocol.Category> categories=Arrays.asList(
++                    new UsbCloneProtocol.Category("photos",1249,2400000000L),new UsbCloneProtocol.Category("videos",48,6800000000L),
++                    new UsbCloneProtocol.Category("apps",3,320000000L),new UsbCloneProtocol.Category("audio",126,670000000L),
++                    new UsbCloneProtocol.Category("documents",57,94000000L),new UsbCloneProtocol.Category("contacts",840,44000L));
++                List<CloneAppPicker.App> apps=Arrays.asList(new CloneAppPicker.App("preview.one","Notes",80000000L),new CloneAppPicker.App("preview.two","Maps",120000000L),new CloneAppPicker.App("preview.three","Reader",120000000L));
++                setContentView(new CloneSelectionView(this,categories,apps,new CloneSelectionView.Actions(){public void send(Set<String> c,Set<String> p){}public void back(){finish();}}));
++            }else if("transfer".equals(screen)){
++                invoke("transferPage",new Class<?>[]{boolean.class},true);
++                Field field=MainActivity.class.getDeclaredField("transferDashboard");field.setAccessible(true);
++                ((TransferDashboard)field.get(this)).update(624,"62.4%","218 / 1249  ·  IMG_2048.jpg","24.8 MB/s","02:14","6.4 GB","10.3 GB");
++            }
++        }catch(ReflectiveOperationException e){throw new IllegalStateException(e);}
++    }
++    private void invoke(String name,Class<?>[] types,Object... args)throws ReflectiveOperationException{Method method=MainActivity.class.getDeclaredMethod(name,types);method.setAccessible(true);method.invoke(this,args);}
++}
+--- /dev/null
++++ b/ClonePhone/app/src/debug/java/com/abdulla/clonephone/InstallPreviewActivity.java
+@@ -0,0 +1,14 @@
++package com.abdulla.clonephone;
++
++import android.os.Bundle;
++import java.util.ArrayList;
++import java.util.Arrays;
++
++/** An idle installer fixture: no install session starts automatically. Debug builds only. */
++public final class InstallPreviewActivity extends AppInstallActivity {
++    @Override public void onCreate(Bundle state){
++        getIntent().putStringArrayListExtra("uris",new ArrayList<>(Arrays.asList("content://preview/app")));
++        getIntent().putStringArrayListExtra("names",new ArrayList<>(Arrays.asList("Reader.apk")));
++        Bundle idle=new Bundle();idle.putInt("session",-1);super.onCreate(idle);
++    }
++}
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/AppInstallActivity.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/AppInstallActivity.java
+@@ -47,22 +47,22 @@
+         if(uris==null||names==null||uris.size()!=names.size()||uris.isEmpty()){finish();return;}
+         action=getPackageName()+".INSTALL."+UUID.randomUUID();
+         if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,new IntentFilter(action),Context.RECEIVER_NOT_EXPORTED);else registerReceiver(receiver,new IntentFilter(action));
+-        getWindow().setStatusBarColor(Color.rgb(5,11,18));getWindow().setNavigationBarColor(Color.rgb(5,11,18));
++        getWindow().setStatusBarColor(CloneDesign.BG);getWindow().setNavigationBarColor(CloneDesign.BG);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
+         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(22),dp(28),dp(22),dp(28));box.setLayoutDirection(UiText.direction());box.setBackground(makeBg());
+-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(Color.rgb(5,11,18));scroll.addView(box);setContentView(scroll);
+-        TextView brand=label("REBARIT CLONE",13,0xff7f8da3);brand.setLetterSpacing(.16f);box.addView(brand);
+-        TextView title=label(UiText.t(129),28,Color.WHITE);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setPadding(0,dp(8),0,dp(6));box.addView(title);
+-        summary=label("",13,0xff8ea0b8);summary.setPadding(0,0,0,dp(18));box.addView(summary);
++        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(CloneDesign.BG);scroll.addView(box);setContentView(scroll);
++        TextView brand=label("REBARIT CLONE",13,CloneDesign.BLUE);brand.setLetterSpacing(.16f);box.addView(brand);
++        TextView title=label(UiText.t(129),28,CloneDesign.INK);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setPadding(0,dp(8),0,dp(6));box.addView(title);
++        summary=label("",13,CloneDesign.MUTED);summary.setTextDirection(View.TEXT_DIRECTION_LTR);summary.setPadding(0,0,0,dp(18));box.addView(summary);
+         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(18),dp(18),dp(18),dp(18));card.setBackground(cardBg());box.addView(card,new LinearLayout.LayoutParams(-1,-2));
+-        position=label("",20,Color.WHITE);position.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(position);
+-        state=label("",15,0xffb8c5d8);state.setPadding(0,dp(12),0,dp(12));card.addView(state);
+-        progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);progress.setProgressTintList(android.content.res.ColorStateList.valueOf(0xff00d9ff));progress.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff263447));card.addView(progress,new LinearLayout.LayoutParams(-1,dp(6)));
+-        LinearLayout actions=new LinearLayout(this);actions.setOrientation(LinearLayout.HORIZONTAL);actions.setPadding(0,dp(18),0,0);card.addView(actions);
+-        retry=vipButton(UiText.t(200),0xff0b86ff);actions.addView(retry,new LinearLayout.LayoutParams(0,dp(48),1));retry.setOnClickListener(v->startCurrent());
+-        next=vipButton(UiText.t(201),0xff27364a);LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(0,dp(48),1);np.setMarginStart(dp(10));actions.addView(next,np);next.setOnClickListener(v->finishItem(false,UiText.t(202)));
+-        Button stop=vipButton(UiText.t(29),0xff7b1f2c);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,dp(48));sp.setMargins(0,dp(12),0,0);box.addView(stop,sp);stop.setOnClickListener(v->onBackPressed());
+-        TextView note=label(UiText.t(203),13,0xff8392a8);note.setPadding(0,dp(18),0,dp(8));box.addView(note);
+-        history=label("",14,0xffd2dbea);history.setLineSpacing(0,1.18f);box.addView(history);
++        position=label("",20,CloneDesign.INK);position.setTypeface(Typeface.DEFAULT,Typeface.BOLD);card.addView(position);
++        state=label("",15,CloneDesign.MUTED);state.setPadding(0,dp(12),0,dp(12));card.addView(state);
++        progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);progress.setProgressTintList(android.content.res.ColorStateList.valueOf(CloneDesign.BLUE));progress.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(CloneDesign.LINE));card.addView(progress,new LinearLayout.LayoutParams(-1,dp(6)));
++        LinearLayout actions=new LinearLayout(this);actions.setOrientation(LinearLayout.VERTICAL);actions.setPadding(0,dp(18),0,0);card.addView(actions);
++        retry=vipButton(UiText.t(200),0xff0b86ff);actions.addView(retry,new LinearLayout.LayoutParams(-1,-2));retry.setOnClickListener(v->startCurrent());
++        next=vipButton(UiText.t(201),0xff27364a);LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);np.topMargin=dp(8);actions.addView(next,np);next.setOnClickListener(v->finishItem(false,UiText.t(202)));
++        Button stop=vipButton(UiText.t(29),0xff7b1f2c);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,-2);sp.setMargins(0,dp(12),0,0);box.addView(stop,sp);stop.setOnClickListener(v->onBackPressed());
++        TextView note=label(UiText.t(203),13,CloneDesign.MUTED);note.setPadding(0,dp(18),0,dp(8));box.addView(note);
++        history=label("",14,CloneDesign.INK);history.setLineSpacing(0,1.18f);box.addView(history);
+         if(saved!=null){installed=saved.getInt("installed",0);skipped=saved.getInt("skipped",0);results.append(saved.getString("results",""));history.setText(results.toString());index=saved.getInt("index",0);int old=saved.getInt("session",-1);if(old>=0)try{getPackageManager().getPackageInstaller().abandonSession(old);}catch(Exception ignored){}state.setText(UiText.t(204));}
+         else startPending=true;
+         showPosition();
+@@ -121,10 +121,10 @@
+     @Override public void onBackPressed(){new AlertDialog.Builder(UiText.context(this)).setMessage(UiText.t(220)).setPositiveButton(UiText.t(29),(d,w)->{destroyed=true;abandon();finish();}).setNegativeButton(UiText.t(124),null).show();}
+     @Override protected void onSaveInstanceState(Bundle state){state.putInt("installed",installed);state.putInt("skipped",skipped);state.putString("results",results.toString());state.putInt("index",index);state.putInt("session",sessionId);super.onSaveInstanceState(state);}
+     private int dp(int v){return (int)(v*getResources().getDisplayMetrics().density+.5f);}
+-    private TextView label(String text,int size,int color){TextView v=new TextView(this);v.setText(text);v.setTextSize(size);v.setTextColor(color);v.setGravity(UiText.direction()==View.LAYOUT_DIRECTION_RTL?Gravity.RIGHT:Gravity.LEFT);return v;}
+-    private GradientDrawable makeBg(){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xff050b12,0xff091321,0xff0b1020});return g;}
+-    private GradientDrawable cardBg(){GradientDrawable g=new GradientDrawable();g.setColor(0xff101a28);g.setCornerRadius(dp(22));g.setStroke(dp(1),0xff26364d);return g;}
+-    private Button vipButton(String text,int color){Button b=new Button(this);b.setText(text);b.setTextColor(Color.WHITE);b.setTextSize(14);b.setAllCaps(false);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(16));b.setBackground(g);return b;}
++    private TextView label(String text,int size,int color){return CloneDesign.text(this,text,size,color,false);}
++    private GradientDrawable makeBg(){return CloneDesign.surface(this,CloneDesign.BG,0,0);}
++    private GradientDrawable cardBg(){return CloneDesign.surface(this,Color.WHITE,CloneDesign.LINE,22);}
++    private Button vipButton(String text,int color){Button b=new Button(this);b.setText(text);CloneDesign.button(b,color==0xff0b86ff);if(color==0xff7b1f2c)b.setTextColor(0xffb44455);return b;}
+ 
+     @Override protected void onDestroy(){destroyed=true;worker.shutdownNow();abandon();try{unregisterReceiver(receiver);}catch(Exception ignored){}super.onDestroy();}
+ }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneAppPicker.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneAppPicker.java
+@@ -33,15 +33,15 @@
+     CloneAppPicker(Activity activity,List<App> apps,Set<String> previous,Done done,boolean usbReceiver){
+         this.activity=activity;this.apps=apps;this.usbReceiver=usbReceiver;selected.addAll(previous);visible.addAll(apps);
+         LinearLayout panel=new LinearLayout(activity);panel.setOrientation(LinearLayout.VERTICAL);panel.setLayoutDirection(UiText.direction());panel.setPadding(dp(18),dp(8),dp(18),dp(4));
+-        if(usbReceiver){TextView role=new TextView(activity);role.setText(words("لە مۆبایلی تازە ئەپەکانی مۆبایلی کۆن هەڵبژێرە","NEW PHONE · Choose apps from the old phone","الهاتف الجديد · اختر تطبيقات الهاتف القديم"));role.setTextColor(0xff1554d1);role.setTextSize(14);role.setTypeface(null,Typeface.BOLD);role.setGravity(Gravity.CENTER);role.setPadding(dp(12),dp(12),dp(12),dp(12));role.setBackground(round(0xffedf3ff,dp(14)));panel.addView(role,new LinearLayout.LayoutParams(-1,-2));}
+-        EditText search=new EditText(activity);search.setSingleLine(true);search.setHint(words("گەڕان بە ناو یان ناوی پاکێج","Search by app or package name","ابحث باسم التطبيق أو الحزمة"));search.setTextSize(15);search.setPadding(dp(14),0,dp(14),0);search.setBackground(round(0xfff2f5f9,dp(14)));LinearLayout.LayoutParams searchLp=new LinearLayout.LayoutParams(-1,dp(50));searchLp.topMargin=dp(12);panel.addView(search,searchLp);
++        if(usbReceiver){TextView role=new TextView(activity);role.setText(words("لە مۆبایلی تازە ئەپەکانی مۆبایلی کۆن هەڵبژێرە","NEW PHONE · Choose apps from the old phone","الهاتف الجديد · اختر تطبيقات الهاتف القديم"));role.setTextColor(0xff1554d1);role.setTextSize(14);role.setTypeface(null,Typeface.BOLD);role.setGravity(Gravity.CENTER);role.setPadding(dp(12),dp(12),dp(12),dp(12));role.setBackground(round(CloneDesign.PALE,dp(14)));panel.addView(role,new LinearLayout.LayoutParams(-1,-2));}
++        EditText search=new EditText(activity);search.setSingleLine(true);search.setHint(words("گەڕان بە ناو یان ناوی پاکێج","Search by app or package name","ابحث باسم التطبيق أو الحزمة"));search.setTextSize(15);search.setPadding(dp(14),0,dp(14),0);search.setBackground(round(CloneDesign.BG,dp(14)));LinearLayout.LayoutParams searchLp=new LinearLayout.LayoutParams(-1,dp(50));searchLp.topMargin=dp(12);panel.addView(search,searchLp);
+         LinearLayout toolbar=new LinearLayout(activity);toolbar.setGravity(Gravity.CENTER_VERTICAL);toolbar.setPadding(dp(2),dp(6),0,dp(6));summary=new TextView(activity);summary.setTextColor(0xff27364a);summary.setTextSize(14);summary.setTypeface(null,Typeface.BOLD);toolbar.addView(summary,new LinearLayout.LayoutParams(0,-2,1));Button all=new Button(activity);all.setAllCaps(false);all.setText(words("هەموو / هیچ","Select all / none","الكل / لا شيء"));all.setTextSize(13);toolbar.addView(all);panel.addView(toolbar);
+         ListView list=new ListView(activity);list.setDivider(new android.graphics.drawable.ColorDrawable(0xffe8edf3));list.setDividerHeight(dp(1));list.setCacheColorHint(Color.TRANSPARENT);panel.addView(list,new LinearLayout.LayoutParams(-1,dp(400)));
+         adapter=new BaseAdapter(){
+             public int getCount(){return visible.size();}public App getItem(int position){return visible.get(position);}public long getItemId(int position){return position;}
+             public View getView(int position,View recycled,ViewGroup parent){
+                 LinearLayout row;Holder holder;
+-                if(recycled==null){row=new LinearLayout(activity);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(4),dp(10),dp(4),dp(10));holder=new Holder();holder.icon=new ImageView(activity);holder.icon.setBackground(round(0xffedf3ff,dp(12)));holder.icon.setPadding(dp(4),dp(4),dp(4),dp(4));row.addView(holder.icon,new LinearLayout.LayoutParams(dp(48),dp(48)));LinearLayout labels=new LinearLayout(activity);labels.setOrientation(LinearLayout.VERTICAL);labels.setPadding(dp(12),0,dp(8),0);holder.title=new TextView(activity);holder.title.setTextColor(0xff182333);holder.title.setTextSize(16);holder.title.setTypeface(null,Typeface.BOLD);holder.info=new TextView(activity);holder.info.setTextSize(12);holder.info.setTextColor(0xff697586);labels.addView(holder.title);labels.addView(holder.info);row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));holder.check=new CheckBox(activity);holder.check.setButtonTintList(ColorStateList.valueOf(0xff2458e8));holder.check.setClickable(false);holder.check.setFocusable(false);row.addView(holder.check,new LinearLayout.LayoutParams(dp(48),dp(48)));row.setTag(holder);}else{row=(LinearLayout)recycled;holder=(Holder)row.getTag();}
++                if(recycled==null){row=new LinearLayout(activity);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(4),dp(10),dp(4),dp(10));holder=new Holder();holder.icon=new ImageView(activity);holder.icon.setBackground(round(CloneDesign.PALE,dp(12)));holder.icon.setPadding(dp(4),dp(4),dp(4),dp(4));row.addView(holder.icon,new LinearLayout.LayoutParams(dp(48),dp(48)));LinearLayout labels=new LinearLayout(activity);labels.setOrientation(LinearLayout.VERTICAL);labels.setPadding(dp(12),0,dp(8),0);holder.title=new TextView(activity);holder.title.setTextColor(CloneDesign.INK);holder.title.setTextSize(16);holder.title.setTypeface(null,Typeface.BOLD);holder.info=new TextView(activity);holder.info.setTextSize(12);holder.info.setTextColor(CloneDesign.MUTED);labels.addView(holder.title);labels.addView(holder.info);row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));holder.check=new CheckBox(activity);holder.check.setButtonTintList(ColorStateList.valueOf(CloneDesign.BLUE));holder.check.setClickable(false);holder.check.setFocusable(false);row.addView(holder.check,new LinearLayout.LayoutParams(dp(48),dp(48)));row.setTag(holder);}else{row=(LinearLayout)recycled;holder=(Holder)row.getTag();}
+                 App app=getItem(position);holder.title.setText(app.name);holder.info.setText(TransferStats.size(app.bytes));holder.check.setChecked(selected.contains(app.packageName));holder.check.setContentDescription(app.name);holder.icon.setTag(app.packageName);holder.icon.setImageResource(R.drawable.clone_category_apps);holder.icon.setColorFilter(0xff1769e0);Bitmap image=icons.get(app.packageName);if(image!=null){holder.icon.clearColorFilter();holder.icon.setImageBitmap(image);}else loadIcon(app,holder.icon);return row;
+             }
+         };list.setAdapter(adapter);
+--- /dev/null
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneDesign.java
+@@ -0,0 +1,79 @@
++package com.abdulla.clonephone;
++
++import android.content.Context;
++import android.content.res.ColorStateList;
++import android.graphics.*;
++import android.graphics.drawable.*;
++import android.view.*;
++import android.widget.*;
++
++/** Shared native UI system. Illustrations are vectors drawn at the device resolution. */
++final class CloneDesign {
++    static final int BLUE=0xff4559ed, INK=0xff142440, MUTED=0xff66758d;
++    static final int BG=0xfff4f6fc, LINE=0xffe2e8f3, PALE=0xffedf1ff;
++    static final int NAVY=0xff101f40, TEAL=0xff47d6bd;
++    static String words(String ckb,String en,String ar){return "en".equals(UiText.language())?en:"ar".equals(UiText.language())?ar:ckb;}
++    static String ltr(String value){return android.text.BidiFormatter.getInstance(UiText.direction()==View.LAYOUT_DIRECTION_RTL).unicodeWrap(value,android.text.TextDirectionHeuristics.LTR);}
++    static int dp(Context c,int n){return Math.round(n*c.getResources().getDisplayMetrics().density);}
++    static GradientDrawable surface(Context c,int color,int border,int radius){
++        GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(c,radius));
++        if(border!=0)d.setStroke(dp(c,1),border);return d;
++    }
++    static GradientDrawable gradient(Context c,int first,int second,int radius){
++        GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{first,second});d.setCornerRadius(dp(c,radius));return d;
++    }
++    static Drawable press(Context c,Drawable d){return new RippleDrawable(ColorStateList.valueOf(0x164559ed),d,null);}
++    static TextView text(Context c,String value,int size,int color,boolean bold){
++        TextView t=new TextView(c);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
++        t.setGravity(Gravity.START);t.setLineSpacing(dp(c,2),1);t.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));return t;
++    }
++    static void button(Button b,boolean primary){
++        Context c=b.getContext();b.setAllCaps(false);b.setTextSize(15);b.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
++        b.setTextColor(primary?Color.WHITE:BLUE);b.setMinHeight(dp(c,56));b.setMinimumHeight(dp(c,56));
++        b.setPadding(dp(c,18),dp(c,12),dp(c,18),dp(c,12));b.setStateListAnimator(null);
++        b.setBackground(press(c,primary?gradient(c,BLUE,0xff6272f3,18):surface(c,Color.WHITE,LINE,18)));
++        b.setElevation(primary?dp(c,2):0);
++    }
++    static void enter(View v){v.setAlpha(0);v.setTranslationY(dp(v.getContext(),8));v.animate().alpha(1).translationY(0).setDuration(220).start();}
++    static LinearLayout steps(Context c,int active){
++        LinearLayout line=new LinearLayout(c);line.setGravity(Gravity.CENTER_VERTICAL);line.setLayoutDirection(UiText.direction());
++        for(int n=1;n<=3;n++){
++            LinearLayout cell=new LinearLayout(c);cell.setGravity(Gravity.CENTER_VERTICAL);cell.setPadding(dp(c,9),dp(c,10),dp(c,7),dp(c,10));
++            cell.setBackground(surface(c,n==active?PALE:Color.TRANSPARENT,n==active?0xffccd4ff:0,16));
++            TextView number=text(c,n<active?"✓":String.valueOf(n),11,n<=active?Color.WHITE:MUTED,true);number.setGravity(Gravity.CENTER);
++            number.setBackground(surface(c,n<active?0xff1d9a83:n==active?BLUE:0xffe5eaf3,0,20));cell.addView(number,new LinearLayout.LayoutParams(dp(c,25),dp(c,25)));
++            TextView label=text(c,UiText.t(n==1?270:n==2?269:271),11,n==active?BLUE:MUTED,n==active);label.setPadding(dp(c,5),0,dp(c,2),0);cell.addView(label,new LinearLayout.LayoutParams(0,-2,1));
++            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(c,1),0,dp(c,1),0);line.addView(cell,lp);
++        }return line;
++    }
++    static LinearLayout appBar(Context c,String version,Runnable back,View.OnClickListener menu){
++        LinearLayout bar=new LinearLayout(c);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(0,dp(c,6),0,dp(c,10));
++        if(back!=null){TextView arrow=text(c,UiText.direction()==View.LAYOUT_DIRECTION_RTL?"›":"‹",30,INK,false);arrow.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP,30);arrow.setGravity(Gravity.CENTER);arrow.setBackground(press(c,surface(c,Color.WHITE,LINE,15)));arrow.setContentDescription(words("گەڕانەوە","Back","رجوع"));bar.addView(arrow,new LinearLayout.LayoutParams(dp(c,44),dp(c,44)));arrow.setOnClickListener(v->back.run());}
++        LinearLayout words=new LinearLayout(c);words.setOrientation(LinearLayout.VERTICAL);words.setPadding(dp(c,12),0,dp(c,8),0);bar.addView(words,new LinearLayout.LayoutParams(0,-2,1));
++        TextView brand=text(c,"REBARIT CLONE",16,INK,true);brand.setTextDirection(View.TEXT_DIRECTION_LTR);words.addView(brand);
++        TextView build=text(c,"v"+version,11,MUTED,false);build.setTextDirection(View.TEXT_DIRECTION_LTR);words.addView(build);
++        if(menu!=null){TextView dots=text(c,"⋮",26,INK,true);dots.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP,26);dots.setGravity(Gravity.CENTER);dots.setContentDescription(UiText.t(262));dots.setBackground(press(c,surface(c,Color.WHITE,LINE,15)));bar.addView(dots,new LinearLayout.LayoutParams(dp(c,44),dp(c,44)));dots.setOnClickListener(menu);}
++        return bar;
++    }
++
++    static final class Devices extends View {
++        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);private final boolean dark;
++        Devices(Context c,boolean dark){super(c);this.dark=dark;setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
++        @Override protected void onDraw(Canvas c){
++            float s=Math.min(getWidth()/340f,getHeight()/190f);c.save();c.translate((getWidth()-340*s)/2,(getHeight()-190*s)/2);c.scale(s,s);
++            p.setColor(dark?0x1247d6bd:0xffe8edff);c.drawCircle(173,96,86,p);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(1);p.setColor(dark?0x2647d6bd:0xffd7def9);c.drawCircle(173,96,73,p);p.setStyle(Paint.Style.FILL);
++            c.save();c.rotate(-9,108,94);phone(c,61,22,0xff7d90c7,false);c.restore();
++            c.save();c.rotate(9,230,96);phone(c,194,12,0xff77e8d1,true);c.restore();
++            p.setColor(dark?0xff203d6f:Color.WHITE);c.drawCircle(174,97,27,p);p.setColor(dark?TEAL:BLUE);p.setStrokeWidth(3);p.setStrokeCap(Paint.Cap.ROUND);c.drawLine(159,91,185,91,p);c.drawLine(179,85,185,91,p);c.drawLine(179,97,185,91,p);c.drawLine(185,104,159,104,p);c.drawLine(165,98,159,104,p);c.drawLine(165,110,159,104,p);
++            p.setColor(TEAL);c.drawCircle(282,37,5,p);p.setColor(dark?0xff7387c1:0xffb7c6f2);c.drawCircle(49,143,4,p);c.restore();
++        }
++        private void phone(Canvas c,float x,float y,int edge,boolean fresh){
++            p.setColor(0x14000000);c.drawRoundRect(x+2,y+5,x+80,y+159,16,16,p);
++            p.setColor(edge);c.drawRoundRect(x,y,x+78,y+154,16,16,p);p.setColor(0xfff5f8ff);c.drawRoundRect(x+4,y+4,x+74,y+150,13,13,p);
++            p.setColor(NAVY);c.drawRoundRect(x+26,y+8,x+52,y+13,3,3,p);
++            p.setColor(fresh?0xffdbf7ef:0xffe4eaff);c.drawRoundRect(x+11,y+27,x+67,y+79,9,9,p);
++            for(int n=0;n<3;n++){p.setColor(n==0?(fresh?0xff1aa991:BLUE):0xffd3dded);c.drawRoundRect(x+11,y+90+n*15,x+(n==2?49:67),y+96+n*15,3,3,p);}
++            p.setColor(fresh?0xff1aa991:BLUE);c.drawCircle(x+39,y+53,13,p);p.setColor(Color.WHITE);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2);c.drawLine(x+33,y+53,x+38,y+58,p);c.drawLine(x+38,y+58,x+46,y+48,p);p.setStyle(Paint.Style.FILL);
++        }
++    }
++}
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneSelectionView.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/CloneSelectionView.java
+@@ -22,32 +22,29 @@
+     private final LinkedHashMap<String,CheckBox> checks=new LinkedHashMap<>();
+     private final TextView summary;
+     private final Button send,all;
+-    private static final int BLUE=0xff1769e0,INK=0xff182333,MUTED=0xff697586;
++    private static final int BLUE=CloneDesign.BLUE,INK=CloneDesign.INK,MUTED=CloneDesign.MUTED;
+     CloneSelectionView(Activity activity,List<UsbCloneProtocol.Category> categories,List<CloneAppPicker.App> apps,Actions actions){
+-        this(activity,categories,apps,actions,true,wordsStatic("پەیوەست بە مۆبایلی نوێ","Connected to the new phone","متصل بالهاتف الجديد"));
++        this(activity,categories,apps,actions,true,wordsStatic("پەیوەندی ئامادەیە","Connection ready","الاتصال جاهز"));
+     }
+     CloneSelectionView(Activity activity,List<UsbCloneProtocol.Category> categories,List<CloneAppPicker.App> apps,Actions actions,boolean allowIndividualAppChoice,String connectedText){
+         super(activity);this.activity=activity;this.categories=new ArrayList<>();for(UsbCloneProtocol.Category category:categories)if(!"files".equals(category.id))this.categories.add(category);this.apps=apps;for(CloneAppPicker.App app:apps)appPackages.add(app.packageName);
+         this.allowIndividualAppChoice=allowIndividualAppChoice;
+-        setOrientation(VERTICAL);setLayoutDirection(UiText.direction());setBackgroundColor(Color.WHITE);
+-        setPadding(dp(20),dp(8),dp(20),dp(10));
+-        LinearLayout brandRow=new LinearLayout(activity);brandRow.setGravity(Gravity.CENTER_VERTICAL);addView(brandRow,new LayoutParams(-1,dp(44)));
+-        TextView brand=text("REBARIT CLONE",17,INK,true);brand.setTextDirection(View.TEXT_DIRECTION_LTR);brandRow.addView(brand,new LayoutParams(0,-2,1));
+-        String build="";try{build=activity.getPackageManager().getPackageInfo(activity.getPackageName(),0).versionName;}catch(Exception ignored){}TextView version=text(UiText.t(295)+build,11,BLUE,true);version.setPadding(dp(10),dp(6),dp(10),dp(6));version.setBackground(box(0xffe8e8ff,20));brandRow.addView(version);
+-        LinearLayout steps=new LinearLayout(activity);steps.setGravity(Gravity.CENTER_VERTICAL);steps.setPadding(0,dp(8),0,dp(12));addView(steps,new LayoutParams(-1,-2));
+-        for(int n=1;n<=3;n++){String title=UiText.t(n==1?270:n==2?269:271);TextView chip=text((n<2?"✓":n+"  ")+title,11,n==2?Color.WHITE:n==1?BLUE:MUTED,true);chip.setGravity(Gravity.CENTER);chip.setPadding(dp(3),dp(9),dp(3),dp(9));chip.setBackground(box(n==2?BLUE:n==1?0xffe8e8ff:0xffe9edf5,12));LayoutParams cp=new LayoutParams(0,-2,1);cp.setMargins(dp(2),0,dp(2),0);steps.addView(chip,cp);}
+-        LinearLayout header=new LinearLayout(activity);header.setGravity(Gravity.CENTER_VERTICAL);addView(header,new LayoutParams(-1,dp(52)));
+-        TextView back=text("‹",30,INK,true);back.setGravity(Gravity.CENTER);back.setContentDescription(words("گەڕانەوە","Back","رجوع"));header.addView(back,new LayoutParams(dp(44),-1));back.setOnClickListener(v->actions.back());
+-        header.addView(text(words("هەڵبژاردنی داتا","Select data","اختيار البيانات"),21,INK,true),new LayoutParams(0,-2,1));
++        setOrientation(VERTICAL);setLayoutDirection(UiText.direction());setBackgroundColor(CloneDesign.BG);
++        setPadding(dp(18),dp(8),dp(18),dp(14));
++        String build="";try{build=activity.getPackageManager().getPackageInfo(activity.getPackageName(),0).versionName;}catch(Exception ignored){}
++        addView(CloneDesign.appBar(activity,build,actions::back,null),new LayoutParams(-1,-2));
++        addView(CloneDesign.steps(activity,2),new LayoutParams(-1,-2));
++        LinearLayout header=new LinearLayout(activity);header.setGravity(Gravity.CENTER_VERTICAL);header.setMinimumHeight(dp(60));addView(header,new LayoutParams(-1,-2));
++        header.addView(text(words("هەڵبژاردنی داتا","Select data","اختيار البيانات"),24,INK,true),new LayoutParams(0,-2,1));
+         all=new Button(activity);all.setAllCaps(false);all.setTextSize(13);all.setTextColor(BLUE);all.setBackgroundColor(Color.TRANSPARENT);header.addView(all,new LayoutParams(-2,dp(48)));
+         TextView connected=text(connectedText,13,0xff16784e,true);connected.setPadding(dp(14),dp(12),dp(14),dp(12));connected.setCompoundDrawablePadding(dp(8));connected.setBackground(box(0xffe9f7ef,14));addView(connected,new LayoutParams(-1,-2));
+         TextView hint=text(words("ئەو داتایانە هەڵبژێرە کە دەیانگوازیتەوە.","Choose the data to transfer.","اختر البيانات التي تريد نقلها."),14,MUTED,false);hint.setPadding(0,dp(14),0,dp(10));addView(hint);
+         ScrollView scroll=new ScrollView(activity);scroll.setFillViewport(true);addView(scroll,new LayoutParams(-1,0,1));LinearLayout rows=new LinearLayout(activity);rows.setOrientation(VERTICAL);scroll.addView(rows);
+         for(UsbCloneProtocol.Category category:this.categories){
+-            LinearLayout row=new LinearLayout(activity);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(16),dp(12),dp(16));row.setBackground(box(0xfff7f9fc,18));
++            LinearLayout row=new LinearLayout(activity);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(14),dp(16),dp(12),dp(16));row.setBackground(CloneDesign.surface(activity,Color.WHITE,CloneDesign.LINE,22));
+             ImageView icon=new ImageView(activity);icon.setImageResource(icon(category.id));int accent=accent(category.id);icon.setColorFilter(accent);icon.setPadding(dp(12),dp(12),dp(12),dp(12));icon.setBackground(box((accent&0x00ffffff)|0x16000000,16));icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(icon,new LayoutParams(dp(52),dp(52)));
+             LinearLayout labels=new LinearLayout(activity);labels.setOrientation(VERTICAL);labels.setPadding(dp(14),0,dp(8),0);row.addView(labels,new LayoutParams(0,-2,1));labels.addView(text(name(category.id),16,INK,true));
+-            String detail=category.count==0?words("داتای بەردەست نییە","No accessible data","لا توجد بيانات متاحة"):category.count+words(" دانە"," items"," عنصر")+(category.bytes>=0?"  ·  "+TransferStats.size(category.bytes):"");
++            String detail=category.count==0?words("داتای بەردەست نییە","No accessible data","لا توجد بيانات متاحة"):category.count+words(" دانە"," items"," عنصر")+(category.bytes>=0?"  ·  "+CloneDesign.ltr(TransferStats.size(category.bytes)):"");
+             TextView info=text(detail,12,MUTED,false);info.setPadding(0,dp(5),0,0);labels.addView(info);
+             if("apps".equals(category.id)){
+                 appsInfo=info;
+@@ -56,19 +53,19 @@
+                 }
+             }
+             CheckBox check=new CheckBox(activity);check.setButtonTintList(ColorStateList.valueOf(BLUE));check.setChecked(category.count>0);check.setEnabled(category.count>0);check.setContentDescription(name(category.id));row.addView(check,new LayoutParams(dp(48),dp(48)));checks.put(category.id,check);
+-            LayoutParams rp=new LayoutParams(-1,-2);rp.bottomMargin=dp(10);rows.addView(row,rp);
+-            row.setAlpha(category.count>0?1f:.5f);row.setOnClickListener(v->{if(check.isEnabled())check.setChecked(!check.isChecked());});check.setOnCheckedChangeListener((b,on)->{row.setBackground(box(on?0xffeef4ff:0xfff7f9fc,18));refresh();});
+-            if(check.isChecked())row.setBackground(box(0xffeef4ff,18));
++            LayoutParams rp=new LayoutParams(-1,-2);rp.bottomMargin=dp(12);rows.addView(row,rp);
++            row.setAlpha(category.count>0?1f:.5f);row.setOnClickListener(v->{if(check.isEnabled())check.setChecked(!check.isChecked());});check.setOnCheckedChangeListener((b,on)->{row.setBackground(CloneDesign.surface(activity,on?0xffedf1ff:Color.WHITE,on?0xffb8c4ff:CloneDesign.LINE,22));refresh();});
++            if(check.isChecked())row.setBackground(CloneDesign.surface(activity,0xffedf1ff,0xffb8c4ff,22));
+         }
+         LinearLayout footer=new LinearLayout(activity);footer.setOrientation(VERTICAL);footer.setPadding(0,dp(12),0,0);addView(footer,new LayoutParams(-1,-2));summary=text("",14,INK,true);summary.setPadding(0,0,0,dp(10));footer.addView(summary);
+-        send=new Button(activity);send.setAllCaps(false);send.setText(words("دەستپێکردنی گواستنەوە","Start transfer","بدء النقل"));send.setTextColor(Color.WHITE);send.setTextSize(16);send.setTypeface(null,Typeface.BOLD);send.setBackground(box(BLUE,14));footer.addView(send,new LayoutParams(-1,dp(54)));
++        send=new Button(activity);send.setAllCaps(false);send.setText(words("دەستپێکردنی گواستنەوە","Start transfer","بدء النقل"));send.setTextColor(Color.WHITE);send.setTextSize(16);send.setTypeface(null,Typeface.BOLD);CloneDesign.button(send,true);footer.addView(send,new LayoutParams(-1,-2));
+         send.setOnClickListener(v->{Set<String> chosen=selection();if(!chosen.isEmpty()){send.setEnabled(false);all.setEnabled(false);for(CheckBox check:checks.values())check.setEnabled(false);actions.send(chosen,new LinkedHashSet<>(appPackages));}});
+         all.setOnClickListener(v->{boolean complete=true;for(CheckBox check:checks.values())if(check.isEnabled()&&!check.isChecked())complete=false;for(CheckBox check:checks.values())if(check.isEnabled())check.setChecked(!complete);refresh();});refresh();
+     }
+     private Set<String> selection(){LinkedHashSet<String> selected=new LinkedHashSet<>();for(Map.Entry<String,CheckBox> row:checks.entrySet())if(row.getValue().isEnabled()&&row.getValue().isChecked()&&(!"apps".equals(row.getKey())||!allowIndividualAppChoice||!appPackages.isEmpty()))selected.add(row.getKey());return selected;}
+     private void refresh(){if(summary==null||send==null||all==null)return;Set<String> selected=selection();long count=0,bytes=0;boolean unknown=false,complete=true;for(UsbCloneProtocol.Category c:categories){if(c.count>0&&!selected.contains(c.id))complete=false;if(selected.contains(c.id)){if("apps".equals(c.id)&&allowIndividualAppChoice){count+=appPackages.size();for(CloneAppPicker.App app:apps)if(appPackages.contains(app.packageName))bytes+=app.bytes;}else{count+=c.count;if(c.bytes<0)unknown=true;else bytes+=c.bytes;}}}
+-        if(appsInfo!=null){if(allowIndividualAppChoice){long appBytes=0;for(CloneAppPicker.App app:apps)if(appPackages.contains(app.packageName))appBytes+=app.bytes;appsInfo.setText(appPackages.size()+" / "+apps.size()+words(" دانە"," apps"," تطبيق")+"  ·  "+TransferStats.size(appBytes));}}
+-        summary.setText(count+words(" دانە هەڵبژێردراوە"," items selected"," عنصر محدد")+"  ·  "+TransferStats.size(bytes)+(unknown?" +":""));send.setEnabled(!selected.isEmpty());send.setAlpha(send.isEnabled()?1f:.45f);all.setText(complete?words("لابردنی هەموو","Clear all","إلغاء الكل"):words("هەڵبژاردنی هەموو","Select all","تحديد الكل"));}
++        if(appsInfo!=null){if(allowIndividualAppChoice){long appBytes=0;for(CloneAppPicker.App app:apps)if(appPackages.contains(app.packageName))appBytes+=app.bytes;appsInfo.setText(appPackages.size()+" / "+apps.size()+words(" دانە"," apps"," تطبيق")+"  ·  "+CloneDesign.ltr(TransferStats.size(appBytes)));}}
++        summary.setText(count+words(" دانە هەڵبژێردراوە"," items selected"," عنصر محدد")+"  ·  "+CloneDesign.ltr(TransferStats.size(bytes))+(unknown?" +":""));send.setEnabled(!selected.isEmpty());send.setAlpha(send.isEnabled()?1f:.45f);all.setText(complete?words("لابردنی هەموو","Clear all","إلغاء الكل"):words("هەڵبژاردنی هەموو","Select all","تحديد الكل"));}
+     static String name(String id){switch(id){case "photos":return UiText.t(16);case "videos":return UiText.t(18);case "audio":return UiText.t(20);case "documents":return "en".equals(UiText.language())?"Documents":"ar".equals(UiText.language())?"المستندات":"بەڵگەنامەکان";case "files":return UiText.t(26);case "apps":return UiText.t(22);case "contacts":return UiText.t(24);case "calls":return UiText.t(229);case "sms":return UiText.t(230);default:return id;}}
+     private int icon(String id){switch(id){case "documents":return R.drawable.clone_category_documents;case "photos":return R.drawable.clone_category_photos;case "videos":return R.drawable.clone_category_videos;case "audio":return R.drawable.clone_category_audio;case "apps":return R.drawable.clone_category_apps;case "contacts":return R.drawable.clone_category_contacts;case "calls":return R.drawable.clone_category_calls;case "sms":return R.drawable.clone_category_sms;default:return R.drawable.clone_category_files;}}
+     private int accent(String id){switch(id){case "documents":return 0xffd97706;case "photos":return 0xff2563eb;case "videos":return 0xff7c3aed;case "audio":return 0xffdb2777;case "apps":return 0xff0891b2;case "contacts":return 0xff059669;case "calls":return 0xff16a34a;case "sms":return 0xff4f46e5;default:return 0xffd97706;}}
+@@ -76,5 +73,5 @@
+     private static String wordsStatic(String ckb,String en,String ar){return "en".equals(UiText.language())?en:"ar".equals(UiText.language())?ar:ckb;}
+     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
+     private GradientDrawable box(int color,int radius){GradientDrawable shape=new GradientDrawable();shape.setColor(color);shape.setCornerRadius(dp(radius));return shape;}
+-    private TextView text(String label,int size,int color,boolean bold){TextView view=new TextView(activity);view.setText(label);view.setTextSize(size);view.setTextColor(color);view.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);if(bold)view.setTypeface(null,Typeface.BOLD);return view;}
++    private TextView text(String label,int size,int color,boolean bold){return CloneDesign.text(activity,label,size,color,bold);}
+ }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/MainActivity.java
+@@ -28,7 +28,7 @@
+ 
+ public class MainActivity extends Activity {
+     private static final int FILES=10,FOLDER=11,SCAN=12,QR_IMAGE=13,WIFI_SETTINGS=14,LOCATION_SETTINGS=15,UNINSTALL_APP=16,SMS_BACKUP_FILES=17,CAMERA_PERMISSION=20,DATA_PERMISSION=21,HOTSPOT_PERMISSION=22,SETUP_PERMISSION=23,SETUP_SETTINGS=24,PORT=39841,MAX_FILES=100000;
+-    private static final int BLUE=0xff4f46e5,INK=0xff152238,MUTED=0xff627089,BG=0xfff3f5fa;
++    private static final int BLUE=CloneDesign.BLUE,INK=CloneDesign.INK,MUTED=CloneDesign.MUTED,BG=CloneDesign.BG;
+     // A permanent catalogue URL: keep this QR unchanged and publish each new APK
+     // (and its version notes) at this address.
+     private static final String DOWNLOAD_CATALOG_URL="https://apk.rebarit.store/apk";
+@@ -59,9 +59,9 @@
+             sendPicker.close();sendPicker=null;
+         }
+     }
+-    private TextView subtitle,status,percentage,details;
++    private TextView subtitle,status;
++    private TransferDashboard transferDashboard;
+     private final TextView[] categoryProgress=new TextView[TransferStats.KINDS];
+-    private ProgressBar progress;
+     private String screen="home",pendingCategory,pairText;
+     private Uri folder,lastContact;
+     private volatile Socket socket;
+@@ -321,49 +321,40 @@
+     }
+     private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density);}
+     private GradientDrawable box(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(radius));return g;}
+-    private TextView label(String value,int size,int color,boolean bold){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.START);t.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);t.setLineSpacing(dp(4),1);t.setFontFeatureSettings("kern");if(bold)t.setTypeface(null,Typeface.BOLD);return t;}
++    private TextView label(String value,int size,int color,boolean bold){return CloneDesign.text(this,value,size,color,bold);}
+     private void gap(int height){Space s=new Space(this);body.addView(s,new LinearLayout.LayoutParams(1,dp(height)));}
+     private TextView text(String value,int size,int color,boolean bold){TextView t=label(value,size,color,bold);body.addView(t);return t;}
+     private void page(String id,String title,String description,int step){
+-        closeGallery();
+-        getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+-        screen=id;root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(BG);root.setLayoutDirection(UiText.direction());
+-        root.setPadding(dp(24),dp(18),dp(24),dp(14));setContentView(root);
+-        LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);root.addView(top);
+-        TextView brand=label("REBARIT CLONE",19,INK,true);brand.setTextDirection(View.TEXT_DIRECTION_LTR);top.addView(brand,new LinearLayout.LayoutParams(0,dp(40),1));
+-        TextView badge=label(UiText.t(295)+versionName(),11,BLUE,true);badge.setPadding(dp(10),dp(6),dp(10),dp(6));badge.setBackground(box(0xffe8e8ff,20));top.addView(badge);
+-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+-        body=new LinearLayout(this);body.setOrientation(1);body.setPadding(0,dp(12),0,dp(24));scroll.addView(body);
+-        // The journey is always shown in the same order:
+-        // 1. Connect  →  2. Select  →  3. Transfer.
+-        if(step>0){steps(step);gap(24);}
+-        text(title,28,INK,true);gap(10);subtitle=text(description,15,MUTED,false);gap(24);
+-    }
+-    private void steps(int active){
+-        LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER_VERTICAL);body.addView(line,new LinearLayout.LayoutParams(-1,-2));
+-        for(int n=1;n<=3;n++){TextView chip=label((n<active?"✓":String.valueOf(n))+"  "+UiText.t(n==1?270:n==2?269:271),11,n==active?Color.WHITE:n<active?BLUE:MUTED,true);chip.setGravity(Gravity.CENTER);chip.setPadding(dp(4),dp(10),dp(4),dp(10));chip.setBackground(box(n==active?BLUE:n<active?0xffe8e8ff:0xffe9edf5,12));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(2),0,dp(2),0);line.addView(chip,lp);}
+-    }
+-    private TextView summaryCard(String message){TextView v=text(message,16,INK,true);v.setPadding(dp(18),dp(18),dp(18),dp(18));v.setBackground(box(Color.WHITE,20));return v;}
++        closeGallery();screen=id;status=null;transferDashboard=null;
++        getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
++        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setLayoutDirection(UiText.direction());root.setPadding(dp(20),dp(8),dp(20),0);setContentView(root);
++        root.addView(CloneDesign.appBar(this,versionName(),this::onBackPressed,null),new LinearLayout.LayoutParams(-1,-2));
++        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.setVerticalScrollBarEnabled(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
++        body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(0,dp(12),0,dp(28));scroll.addView(body);
++        if(step>0){steps(step);gap(22);}
++        text(title,27,INK,true);gap(8);subtitle=text(description,14,MUTED,false);gap(22);
++        CloneDesign.enter(body);
++    }
++    private void steps(int active){body.addView(CloneDesign.steps(this,active),new LinearLayout.LayoutParams(-1,-2));}
++    private TextView summaryCard(String message){TextView v=text(message,15,INK,true);v.setPadding(dp(18),dp(17),dp(18),dp(17));v.setBackground(CloneDesign.surface(this,Color.WHITE,CloneDesign.LINE,20));return v;}
+     private Button button(String title,boolean primary,Runnable click){
+-        Button b=new Button(this);b.setText(title);b.setTextSize(16);b.setAllCaps(false);b.setTypeface(null,Typeface.BOLD);b.setTextColor(primary?Color.WHITE:BLUE);
+-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x222563eb),box(primary?BLUE:0xffeaf0fd,18),null));
+-        b.setMinHeight(dp(56));b.setPadding(dp(16),dp(14),dp(16),dp(14));b.setElevation(primary?dp(2):0);
++        Button b=new Button(this);b.setText(title);CloneDesign.button(b,primary);
+         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(7),0,dp(7));body.addView(b,lp);b.setOnClickListener(v->click.run());return b;
+     }
+-    private void note(String message){gap(12);TextView t=text(message,13,MUTED,false);t.setPadding(dp(14),dp(12),dp(14),dp(12));t.setBackground(box(0xffe9edf5,14));}
++    private void note(String message){gap(12);TextView t=text(message,13,MUTED,false);t.setPadding(dp(15),dp(13),dp(15),dp(13));t.setBackground(CloneDesign.surface(this,0xffeaf0fa,0,16));}
+     private void toast(String message){Toast.makeText(this,message,Toast.LENGTH_LONG).show();}
+     private void alert(String title,String message){new AlertDialog.Builder(UiText.context(this)).setTitle(title).setMessage(message).setPositiveButton(UiText.t(2),null).show();}
+     private void chooseLanguage(){
+         String[] codes={"ckb","en","ar"};String[] labels={"کوردی","English","العربية"};int selected=Arrays.asList(codes).indexOf(UiText.language());
+         new AlertDialog.Builder(UiText.context(this)).setTitle(receiveText("زمان","Language","اللغة")).setSingleChoiceItems(labels,selected,(dialog,which)->{UiText.select(this,codes[which]);dialog.dismiss();home();}).setNegativeButton(UiText.t(61),null).show();
+     }
+-    private static final int NIGHT=0xff050b12,LIGHT=0xfff4faff;
++    private static final int NIGHT=0xff101f40,LIGHT=0xfff4faff;
+     private void darkScreen(String id,String title){
+         closeGallery();
+         screen=id;root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(NIGHT);root.setLayoutDirection(UiText.direction());root.setPadding(dp(22),dp(12),dp(22),dp(12));setContentView(root);
+         getWindow().setStatusBarColor(NIGHT);getWindow().setNavigationBarColor(NIGHT);getWindow().getDecorView().setSystemUiVisibility(0);
+         FrameLayout bar=new FrameLayout(this);root.addView(bar,new LinearLayout.LayoutParams(-1,dp(50)));
+-        if(!id.equals("home")){TextView back=label("‹",32,LIGHT,true);back.setGravity(Gravity.CENTER);back.setContentDescription(UiText.t(29));FrameLayout.LayoutParams bp=new FrameLayout.LayoutParams(dp(40),-1,Gravity.START|Gravity.CENTER_VERTICAL);bar.addView(back,bp);back.setOnClickListener(v->home());}
++        if(!id.equals("home")){TextView back=label(UiText.direction()==View.LAYOUT_DIRECTION_RTL?"›":"‹",32,LIGHT,true);back.setGravity(Gravity.CENTER);back.setContentDescription(UiText.t(29));FrameLayout.LayoutParams bp=new FrameLayout.LayoutParams(dp(40),-1,Gravity.START|Gravity.CENTER_VERTICAL);bar.addView(back,bp);back.setOnClickListener(v->home());}
+         LinearLayout brandBox=new LinearLayout(this);brandBox.setOrientation(LinearLayout.VERTICAL);brandBox.setGravity(Gravity.CENTER);
+         TextView brand=label(id.equals("home")?"REBARIT CLONE":title,id.equals("home")?18:20,LIGHT,true);brand.setGravity(Gravity.CENTER);brand.setTextDirection(View.TEXT_DIRECTION_LTR);brandBox.addView(brand,new LinearLayout.LayoutParams(-2,-2));
+         if(id.equals("home")){TextView version=label("v"+versionName(),10,0xff8ea6b8,false);version.setGravity(Gravity.CENTER);version.setTextDirection(View.TEXT_DIRECTION_LTR);brandBox.addView(version,new LinearLayout.LayoutParams(-2,-2));}
+@@ -418,133 +409,55 @@
+     }
+     private void openDownloadCatalog(){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(DOWNLOAD_CATALOG_URL)));}catch(Exception e){toast(UiText.t(297));}}
+     private OnlineUpdate onlineUpdate;
++    @Override public void onWindowFocusChanged(boolean focused){
++        super.onWindowFocusChanged(focused);if(!focused)return;
++        boolean dark="usbRoles".equals(screen);int color=dark?NIGHT:BG;
++        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
++        getWindow().setStatusBarColor(color);getWindow().setNavigationBarColor(color);
++        if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=getWindow().getInsetsController();if(controller!=null){int appearance=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;controller.setSystemBarsAppearance(dark?0:appearance,appearance);}}
++        else getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
++    }
+     @Override protected void onResume(){super.onResume();if(onlineUpdate!=null)onlineUpdate.resume();}
+     @Override protected void onPause(){if(onlineUpdate!=null)onlineUpdate.pause();super.onPause();}
+     private void home(){
+         if(!busy){stopLink();senderPaired=false;selectedUsbChannel=null;phoneCloneController=false;phoneCloneSource=false;cloneControllerAuthorized=false;restartCloneBand=false;restartReceiveBand=false;}
+-        closeGallery();
+-        screen="home";
+-        getWindow().setStatusBarColor(0xfff7faff);
+-        getWindow().setNavigationBarColor(0xfff7faff);
+-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+-
+-        root=new LinearLayout(this);
+-        root.setOrientation(LinearLayout.VERTICAL);
+-        root.setBackgroundColor(0xfff7faff);
+-        root.setLayoutDirection(UiText.direction());
+-        setContentView(root);
+-
+-        ScrollView scroll=new ScrollView(this);
+-        scroll.setFillViewport(true);
+-        scroll.setClipToPadding(false);
+-        root.addView(scroll,new LinearLayout.LayoutParams(-1,-1));
+-
+-        body=new LinearLayout(this);
+-        body.setOrientation(LinearLayout.VERTICAL);
+-        body.setPadding(dp(18),dp(18),dp(18),dp(28));
+-        scroll.addView(body,new ScrollView.LayoutParams(-1,-2));
+-
+-        // Single premium home header — no duplicated REBAR IT CLONE title.
+-        FrameLayout header=new FrameLayout(this);
+-        body.addView(header,new LinearLayout.LayoutParams(-1,dp(116)));
+-
+-        LinearLayout brandBox=new LinearLayout(this);
+-        brandBox.setOrientation(LinearLayout.VERTICAL);
+-        brandBox.setGravity(Gravity.CENTER);
+-        TextView brand=label("REBAR IT CLONE",30,0xff0d1830,true);
+-        brand.setGravity(Gravity.CENTER);
+-        brand.setTextDirection(View.TEXT_DIRECTION_LTR);
+-        brand.setLetterSpacing(0.02f);
+-        brandBox.addView(brand,new LinearLayout.LayoutParams(-2,-2));
+-
+-        TextView version=label(receiveText("وەشانی نوێ  ","Version  ","الإصدار  ")+versionName(),12,0xff2459ea,true);
+-        version.setGravity(Gravity.CENTER);
+-        version.setPadding(dp(14),dp(6),dp(14),dp(6));
+-        version.setBackground(box(0xffeaf0ff,22));
+-        LinearLayout.LayoutParams vp=new LinearLayout.LayoutParams(-2,-2);
+-        vp.gravity=Gravity.CENTER;
+-        vp.topMargin=dp(10);
+-        brandBox.addView(version,vp);
+-
+-        FrameLayout.LayoutParams brandLp=new FrameLayout.LayoutParams(-2,-2,Gravity.CENTER);
+-        header.addView(brandBox,brandLp);
+-
+-        TextView menu=label("⋮",28,0xff5f6f86,true);
+-        menu.setGravity(Gravity.CENTER);
+-        menu.setContentDescription(UiText.t(262));
+-        FrameLayout.LayoutParams menuLp=new FrameLayout.LayoutParams(dp(42),dp(48),Gravity.END|Gravity.TOP);
+-        header.addView(menu,menuLp);
+-        menu.setOnClickListener(v->{
+-            PopupMenu options=new PopupMenu(this,menu);
+-            options.getMenu().add(receiveText("زمان","Language","اللغة")).setOnMenuItemClickListener(i->{chooseLanguage();return true;});
+-            options.getMenu().add(UiText.t(310)).setOnMenuItemClickListener(i->{shareOwnApk();return true;});
+-            options.getMenu().add(UiText.t(290)).setOnMenuItemClickListener(i->{showAppDownloadQr();return true;});
+-            options.getMenu().add(onlineUpdate.menuTitle()).setOnMenuItemClickListener(i->{onlineUpdate.checkManually();return true;});
+-            options.show();
+-        });
+-
+-        premiumHomeCard(
+-                receiveText("مۆبايل بۆ مۆبايل","Phone to phone","من هاتف إلى هاتف"),
+-                R.drawable.action_clone,0xff1677ff,0xff4ba1ff,0xffeef6ff,()->deviceRoles(false));
+-        premiumHomeCard(
+-                receiveText("ناردن","Send","إرسال"),
+-                R.drawable.action_send,0xff0fbf62,0xff35d97d,0xffeffcf4,this::openSendPicker);
+-        premiumHomeCard(
+-                receiveText("وەرگرتن","Receive","استقبال"),
+-                R.drawable.action_receive,0xff7c3aed,0xffa855f7,0xfff6efff,this::startReceiveQr);
+-        premiumHomeCard(
+-                receiveText("ناردن بە کێبڵ","Send via cable","الإرسال عبر كابل"),
+-                R.drawable.action_usb,0xffff3b5c,0xffff6b7f,0xffffeef1,this::usbRoles);
+-    }
+-
++        closeGallery();screen="home";transferDashboard=null;
++        getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
++        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setLayoutDirection(UiText.direction());root.setBackgroundColor(BG);root.setPadding(dp(20),dp(8),dp(20),0);setContentView(root);
++        root.addView(CloneDesign.appBar(this,versionName(),null,this::showMainMenu),new LinearLayout.LayoutParams(-1,-2));
++        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setVerticalScrollBarEnabled(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(0,dp(14),0,dp(28));scroll.addView(body);
++        text(receiveText("داتاکانت، لە شوێنی نوێ.","Your data. A new beginning.","بياناتك، بداية جديدة."),26,INK,true);
++        TextView intro=text(receiveText("گواستنەوەیەکی سادە، هەنگاو بە هەنگاو.","A simple move, one step at a time.","انتقال بسيط، خطوة بخطوة."),14,MUTED,false);intro.setPadding(0,dp(6),0,dp(20));
++        LinearLayout hero=new LinearLayout(this);hero.setOrientation(LinearLayout.VERTICAL);hero.setPadding(dp(22),dp(20),dp(22),dp(20));hero.setBackground(CloneDesign.gradient(this,CloneDesign.NAVY,0xff243d79,28));body.addView(hero,new LinearLayout.LayoutParams(-1,-2));
++        TextView tag=label(receiveText("مۆبایل بۆ مۆبایل","PHONE TO PHONE","من هاتف إلى هاتف"),12,CloneDesign.TEAL,true);hero.addView(tag);
++        TextView title=label(receiveText("ئامادەی مۆبایلی تازەیت؟","Ready for your new phone?","جاهز لهاتفك الجديد؟"),25,Color.WHITE,true);title.setPadding(0,dp(8),0,0);hero.addView(title);
++        TextView sub=label(receiveText("وێنە، ڤیدیۆ، ئەپ و فایلەکانت بگوازەوە.","Bring your photos, videos, apps and files.","انقل صورك وفيديوهاتك وتطبيقاتك وملفاتك."),13,0xffc4d0e9,false);sub.setPadding(0,dp(7),0,0);hero.addView(sub);
++        hero.addView(new CloneDesign.Devices(this,true),new LinearLayout.LayoutParams(-1,dp(166)));
++        Button begin=new Button(this);CloneDesign.button(begin,false);begin.setText(receiveText("دەستپێکردنی گواستنەوە","Start your move","ابدأ النقل"));begin.setTextColor(CloneDesign.NAVY);hero.addView(begin,new LinearLayout.LayoutParams(-1,-2));begin.setOnClickListener(v->deviceRoles(false));
++        gap(24);text(receiveText("گواستنەوەی فایل","File transfer","نقل الملفات"),17,INK,true);gap(12);
++        premiumHomeCard(receiveText("ناردن","Send","إرسال"),R.drawable.action_send,0xff168e78,0,0,this::openSendPicker);
++        premiumHomeCard(receiveText("وەرگرتن","Receive","استقبال"),R.drawable.action_receive,BLUE,0,0,this::startReceiveQr);
++        premiumHomeCard(receiveText("گواستنەوە بە کێبڵ","Cable transfer","النقل عبر كابل"),R.drawable.action_usb,0xff9a5bca,0,0,this::usbRoles);
++        Button history=button(receiveText("مێژووی گواستنەوە","Transfer history","سجل النقل"),false,this::showTransferHistory);history.setTextSize(14);
++        TextView footer=text(receiveText("داتا ڕاستەوخۆ لەنێوان مۆبایلەکان دەگوازرێتەوە.","Your data moves directly between the phones.","تُنقل بياناتك مباشرة بين الهاتفين."),12,MUTED,false);footer.setGravity(Gravity.CENTER);footer.setPadding(dp(12),dp(12),dp(12),0);
++        CloneDesign.enter(body);
++        root.post(()->{if(!isDestroyed()&&"home".equals(screen)){getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));}});
++    }
++    private void showMainMenu(View anchor){
++        PopupMenu options=new PopupMenu(this,anchor);
++        options.getMenu().add(receiveText("زمان","Language","اللغة")).setOnMenuItemClickListener(i->{chooseLanguage();return true;});
++        options.getMenu().add(UiText.t(310)).setOnMenuItemClickListener(i->{shareOwnApk();return true;});
++        options.getMenu().add(UiText.t(290)).setOnMenuItemClickListener(i->{showAppDownloadQr();return true;});
++        options.getMenu().add(onlineUpdate.menuTitle()).setOnMenuItemClickListener(i->{onlineUpdate.checkManually();return true;});options.show();
++    }
+     private void premiumHomeCard(String title,int iconResource,int accentStart,int accentEnd,int pale,Runnable click){
+-        LinearLayout card=new LinearLayout(this);
+-        card.setGravity(Gravity.CENTER_VERTICAL);
+-        card.setPadding(dp(18),dp(15),dp(16),dp(15));
+-
+-        GradientDrawable surface=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.WHITE,pale});
+-        surface.setCornerRadius(dp(28));
+-        surface.setStroke(dp(1),0xffe7edf5);
+-        card.setBackground(new RippleDrawable(ColorStateList.valueOf((accentStart&0x00ffffff)|0x18000000),surface,null));
+-        card.setElevation(dp(2));
+-        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(128));
+-        cp.setMargins(0,0,0,dp(14));
+-        body.addView(card,cp);
+-
+-        // Soft circular arrow pill on the leading edge.
+-        TextView arrow=label("›",35,accentStart,false);
+-        arrow.setGravity(Gravity.CENTER);
+-        GradientDrawable arrowBg=box((accentStart&0x00ffffff)|0x12000000,40);
+-        arrowBg.setStroke(dp(1),(accentStart&0x00ffffff)|0x26000000);
+-        arrow.setBackground(arrowBg);
+-        card.addView(arrow,new LinearLayout.LayoutParams(dp(40),dp(40)));
+-
+-        LinearLayout words=new LinearLayout(this);
+-        words.setOrientation(LinearLayout.VERTICAL);
+-        words.setGravity(Gravity.CENTER_VERTICAL);
+-        words.setPadding(dp(12),0,dp(10),0);
+-        card.addView(words,new LinearLayout.LayoutParams(0,-1,1));
+-
+-        TextView t=label(title,22,0xff101a31,true);
+-        t.setSingleLine(true);
+-        if(Build.VERSION.SDK_INT>=26)t.setAutoSizeTextTypeUniformWithConfiguration(14,22,1,android.util.TypedValue.COMPLEX_UNIT_SP);
+-        t.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+-        words.addView(t,new LinearLayout.LayoutParams(-1,-2));
+-
+-        ImageView icon=new ImageView(this);
+-        icon.setImageResource(iconResource);
+-        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+-        icon.setPadding(dp(12),dp(12),dp(12),dp(12));
+-        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+-        GradientDrawable iconBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{accentStart,accentEnd});
+-        iconBg.setCornerRadius(dp(24));
+-        icon.setBackground(iconBg);
+-        icon.setElevation(dp(3));
+-        card.addView(icon,new LinearLayout.LayoutParams(dp(64),dp(64)));
+-
+-        card.setFocusable(true);
+-        card.setClickable(true);
+-        card.setOnClickListener(v->click.run());
++        LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(16),dp(16),dp(14),dp(16));card.setMinimumHeight(dp(86));card.setBackground(CloneDesign.press(this,CloneDesign.surface(this,Color.WHITE,CloneDesign.LINE,22)));
++        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.bottomMargin=dp(10);body.addView(card,cp);
++        ImageView icon=new ImageView(this);icon.setImageResource(iconResource);icon.setColorFilter(accentStart);icon.setPadding(dp(13),dp(13),dp(13),dp(13));icon.setBackground(box((accentStart&0x00ffffff)|0x14000000,17));icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);card.addView(icon,new LinearLayout.LayoutParams(dp(52),dp(52)));
++        LinearLayout copy=new LinearLayout(this);copy.setOrientation(LinearLayout.VERTICAL);copy.setPadding(dp(14),0,dp(8),0);card.addView(copy,new LinearLayout.LayoutParams(0,-2,1));copy.addView(label(title,18,INK,true));
++        String sub=iconResource==R.drawable.action_send?receiveText("فایلەکانت هەڵبژێرە و بینێرە","Choose files and send them","اختر الملفات وأرسلها"):iconResource==R.drawable.action_receive?receiveText("ئامادەی وەرگرتنی فایلەکان بە","Get ready to receive files","استعد لاستقبال الملفات"):receiveText("بە پەیوەندی USB گواستنەوە بکە","Transfer over a USB connection","انقل عبر اتصال USB");
++        TextView description=label(sub,12,MUTED,false);description.setPadding(0,dp(4),0,0);copy.addView(description);
++        TextView arrow=label(UiText.direction()==View.LAYOUT_DIRECTION_RTL?"‹":"›",28,0xff9aa8be,false);arrow.setGravity(Gravity.CENTER);card.addView(arrow,new LinearLayout.LayoutParams(dp(26),dp(44)));card.setFocusable(true);card.setOnClickListener(v->click.run());
+     }
+ 
+     private void landingCard(String title,String description,String action,int first,int second,Runnable click){
+@@ -597,34 +510,20 @@
+             default:return value;
+         }
+     }
+-    private void clonePage(String id,String title,String description,int step){
+-        closeGallery();screen=id;status=null;
+-        getWindow().setStatusBarColor(Color.WHITE);getWindow().setNavigationBarColor(Color.WHITE);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setLayoutDirection(UiText.direction());root.setBackgroundColor(0xfff5f7fb);root.setPadding(dp(20),dp(10),dp(20),dp(12));setContentView(root);
+-        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.setPadding(dp(4),0,dp(4),0);root.addView(header,new LinearLayout.LayoutParams(-1,dp(52)));
+-        TextView brand=label("REBARIT CLONE",18,INK,true);brand.setTextDirection(View.TEXT_DIRECTION_LTR);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
+-        TextView badge=label(UiText.t(295)+versionName(),11,BLUE,true);badge.setPadding(dp(10),dp(6),dp(10),dp(6));badge.setBackground(box(0xffe8e8ff,20));header.addView(badge);
+-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(4),dp(8),dp(4),dp(20));scroll.addView(body);
+-        if(step>0){steps(step);gap(22);}
+-        LinearLayout intro=new LinearLayout(this);intro.setOrientation(LinearLayout.VERTICAL);intro.setPadding(dp(18),dp(18),dp(18),dp(18));intro.setBackground(box(Color.WHITE,22));body.addView(intro,new LinearLayout.LayoutParams(-1,-2));
+-        TextView heading=label(cloneWords(title),25,INK,true);intro.addView(heading);subtitle=label(cloneWords(description),14,MUTED,false);subtitle.setPadding(0,dp(8),0,0);intro.addView(subtitle);
+-        gap(16);
+-    }
+-    private void cloneDeviceArt(int drawable){
+-        ImageView image=new ImageView(this);image.setImageResource(drawable);image.setColorFilter(BLUE);image.setPadding(dp(28),dp(28),dp(28),dp(28));image.setBackground(box(0xffeef4ff,28));image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(140),dp(140));lp.gravity=Gravity.CENTER;body.addView(image,lp);
+-    }
++    private void clonePage(String id,String title,String description,int step){page(id,cloneWords(title),cloneWords(description),step);}
++    private void cloneDeviceArt(int drawable){body.addView(new CloneDesign.Devices(this,false),new LinearLayout.LayoutParams(-1,dp(174)));}
+     private void deviceRoles(boolean files){
+         clonePage(files?"fileRoles":"deviceRoles","مۆبایل بۆ مۆبایل","ئەمە مۆبایلە کۆنەکەیە یان نوێیەکە؟",0);
+-        gap(22);TextView info=label("دڵنیابە هەردوو مۆبایلەکە باتریی پێویستیان هەیە",14,MUTED,false);info.setGravity(Gravity.CENTER);body.addView(info);
+-        gap(36);
+-        cloneRoleCard("من مۆبایلە تازەکەم","وەرگرتنی داتا","↓",0xff18bd69,()->startPermissions(true));
+-        cloneRoleCard("من مۆبایلە کۆنەکەم","ناردنی داتا","▯",0xff1976f3,()->startPermissions(false));
++        gap(6);TextView info=label(receiveText("ئەم مۆبایلە کامەیە؟ ڕۆڵەکەت هەڵبژێرە.","Which phone is this? Choose its role.","أي هاتف هذا؟ اختر دوره."),14,MUTED,false);info.setGravity(Gravity.CENTER);body.addView(info);
++        body.addView(new CloneDesign.Devices(this,false),new LinearLayout.LayoutParams(-1,dp(170)));gap(18);
++        cloneRoleCard(receiveText("من مۆبایلە تازەکەم","This is the new phone","هذا هو الهاتف الجديد"),receiveText("وەرگرتنی داتا","Receive data","استقبال البيانات"),"↓",0xff18bd69,()->startPermissions(true));
++        cloneRoleCard(receiveText("من مۆبایلە کۆنەکەم","This is the old phone","هذا هو الهاتف القديم"),receiveText("ناردنی داتا","Send data","إرسال البيانات"),"▯",0xff1976f3,()->startPermissions(false));
+     }
+     private void cloneRoleCard(String title,String sub,String glyph,int color,Runnable click){
+-        LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(22),dp(18),dp(22),dp(18));card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),box(Color.WHITE,18),null));
+-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(112));lp.setMargins(0,0,0,dp(16));body.addView(card,lp);
++        LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(22),dp(18),dp(22),dp(18));card.setBackground(CloneDesign.press(this,CloneDesign.surface(this,Color.WHITE,CloneDesign.LINE,22)));
++        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,dp(16));body.addView(card,lp);
+         LinearLayout words=new LinearLayout(this);words.setOrientation(1);card.addView(words,new LinearLayout.LayoutParams(0,-2,1));words.addView(label(title,21,INK,true));TextView st=label(sub,14,MUTED,false);st.setPadding(0,dp(8),0,0);words.addView(st);
+-        ImageView icon=new ImageView(this);icon.setImageResource(glyph.equals("↓")?R.drawable.action_receive:R.drawable.action_send);icon.setColorFilter(color);icon.setPadding(dp(12),dp(12),dp(12),dp(12));icon.setBackground(box(0xffeef4ff,18));card.addView(icon,new LinearLayout.LayoutParams(dp(64),dp(64)));card.setElevation(dp(2));card.setOnClickListener(v->click.run());
++        ImageView icon=new ImageView(this);icon.setImageResource(glyph.equals("↓")?R.drawable.action_receive:R.drawable.action_send);icon.setColorFilter(color);icon.setPadding(dp(12),dp(12),dp(12),dp(12));icon.setBackground(box(0xffeef4ff,18));card.addView(icon,new LinearLayout.LayoutParams(dp(64),dp(64)));card.setMinimumHeight(dp(106));card.setOnClickListener(v->click.run());
+     }
+     private void usbRoles(){
+         if(busy)return;
+@@ -641,7 +540,7 @@
+         text(receiveText("مۆبایلی نوێ وەرگرە؛ مۆبایلی کۆن نێرەرە. لیستی ئەپەکان تەنها لە وەرگر دەردەکەوێت.","Use the new phone as receiver and the old phone as sender. The app list appears only on the receiver.","اجعل الهاتف الجديد مستقبلاً والقديم مرسلاً. تظهر قائمة التطبيقات على الهاتف المستقبل فقط."),12,0xff8ea6b8,false).setGravity(Gravity.CENTER);
+     }
+     private void darkRole(String title,String description,String glyph,int accent,Runnable click){
+-        LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(18),dp(22),dp(18),dp(22));card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),box(0xff0d1822,20),null));
++        LinearLayout card=new LinearLayout(this);card.setGravity(Gravity.CENTER_VERTICAL);card.setPadding(dp(18),dp(22),dp(18),dp(22));card.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22ffffff),CloneDesign.surface(this,0xff192e54,0xff31466c,22),null));
+         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(16));body.addView(card,cp);
+         TextView icon=label(glyph,30,NIGHT,true);icon.setGravity(Gravity.CENTER);icon.setBackground(box(accent,15));card.addView(icon,new LinearLayout.LayoutParams(dp(50),dp(54)));
+         LinearLayout words=new LinearLayout(this);words.setOrientation(1);words.setPadding(dp(16),0,dp(10),0);card.addView(words,new LinearLayout.LayoutParams(0,-2,1));words.addView(label(title,21,LIGHT,true));words.addView(label(description,13,0xffa9bdca,false));card.setFocusable(true);card.setOnClickListener(v->click.run());
+@@ -666,9 +565,8 @@
+     }
+     private void categories(){
+         page("categories",UiText.t(14),UiText.t(15),2);
+-        summaryCard("✦ REBARIT CLONE • FULL VIP");
+-        button("⚡ Smart Clone",true,()->connectPage());
+-        button("Transfer History",false,()->showTransferHistory());
++        button(receiveText("پەیوەندی بە مۆبایلێکی تر","Connect to another phone","الاتصال بهاتف آخر"),true,()->connectPage());
++        button(receiveText("مێژووی گواستنەوە","Transfer history","سجل النقل"),false,()->showTransferHistory());
+ 
+         section(UiText.t(284));
+         category("photos",UiText.t(16),UiText.t(17),"▧");
+@@ -703,7 +601,7 @@
+     private void chooseApps(){if(!busy)openSendPicker();}
+     private void openSendPicker(){
+         closeGallery();screen="sendPicker";
+-        getWindow().setStatusBarColor(0xfffafafa);getWindow().setNavigationBarColor(0xfffafafa);
++        getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
+         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
+         List<SendFilePicker.Entry> initial=new ArrayList<>();
+         for(Map.Entry<String,List<Item>> group:groups.entrySet())if(!group.getKey().equals("apps")&&!(group.getKey().equals("contacts")&&!pickerContacts.isEmpty()))for(Item i:group.getValue()){
+@@ -1544,9 +1442,9 @@
+         if(phoneCloneSource||phoneCloneController)clonePage("transfer",sending?UiText.t(114):UiText.t(115),"داتاکان بە پەیوەندیی ڕاستەوخۆ دەگوازرێنەوە",3);
+         else page("transfer",sending?UiText.t(114):UiText.t(115),UiText.t(116),3);
+ 
+-        gap(16);percentage=text(UiText.t(118),64,BLUE,true);percentage.setGravity(Gravity.CENTER);gap(20);
+-        progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(1000);progress.setProgressBackgroundTintList(ColorStateList.valueOf(0xffe0e4f1));progress.setProgressTintList(ColorStateList.valueOf(BLUE));body.addView(progress,new LinearLayout.LayoutParams(-1,dp(14)));gap(26);
+-        status=text(UiText.t(119),17,INK,true);status.setVisibility(phoneCloneSource||phoneCloneController?View.VISIBLE:View.GONE);details=summaryCard(UiText.t(120));details.setLineSpacing(dp(10),1);gap(16);
++        transferDashboard=new TransferDashboard(this);body.addView(transferDashboard,new LinearLayout.LayoutParams(-1,-2));
++        transferDashboard.update(0,progressPercent(0),UiText.t(119),"—","—",TransferStats.size(0),TransferStats.size(totalBytes)+(totalKnown?"":" +"));gap(16);
++        status=text(UiText.t(120),14,MUTED,false);gap(14);
+         Arrays.fill(categoryProgress,null);
+         if(transferStats!=null){
+             for(int kind:new int[]{0,1,4,8,3,2,5,6,7})if(transferStats.total(kind)>0){categoryProgress[kind]=summaryCard(categoryProgressText(kind,0,-1));categoryProgress[kind].setTextSize(14);gap(8);}
+@@ -1557,7 +1455,7 @@
+     private void resultPage(boolean success,String message,boolean receiving){
+         transferNotification(success?UiText.t(125):UiText.t(126),0,true);
+         if(phoneCloneSource||phoneCloneController)clonePage("result",success?UiText.t(125):UiText.t(126),message,0);else page("result",success?UiText.t(125):UiText.t(126),message,0);gap(24);
+-        TextView icon=text(success?"✓":"!",80,success?0xff12a875:0xffd68122,true);icon.setGravity(Gravity.CENTER);gap(20);
++        TextView icon=text(success?"✓":"!",58,success?0xff159b80:0xffc87b25,true);icon.setGravity(Gravity.CENTER);icon.setPadding(0,dp(18),0,dp(18));icon.setBackground(CloneDesign.surface(this,success?0xffe1f6ef:0xfffff0df,0,28));gap(20);
+         text(completed+UiText.t(127),22,INK,true).setGravity(Gravity.CENTER);note(UiText.t(128));
+         if(transferStats!=null){
+             summaryCard(UiText.t(253)+(transferStats.total(0)-transferStats.remaining(0,completed)));gap(8);
+@@ -1637,7 +1535,7 @@
+         String info=UiText.t(144)+all+UiText.t(145)+TransferStats.size(moved)+
+             UiText.t(155)+String.format(Locale.US,"%.1f MB/s",rate/1000000.0)+UiText.t(156)+(remaining==0&&done<count?UiText.t(157):eta(remaining,rate,elapsed));
+         final String display=info;final int currentKind=force?-1:TransferStats.kind(item.name,item.mime);
+-        runOnUiThread(()->{if(!screen.equals("transfer")||isDestroyed())return;String shown=progressPercent(percent);transferNotification(shown+" • "+done+" / "+count,percent,false);progress.setProgress(percent);percentage.setText(shown);status.setText(index+" / "+count+"  •  "+item.name);details.setText(display);for(int kind=0;kind<categoryProgress.length;kind++)if(categoryProgress[kind]!=null)categoryProgress[kind].setText(categoryProgressText(kind,done,currentKind));});
++        runOnUiThread(()->{if(!screen.equals("transfer")||isDestroyed())return;String shown=progressPercent(percent);transferNotification(shown+" • "+done+" / "+count,percent,false);if(transferDashboard!=null)transferDashboard.update(percent,shown,index+" / "+count+"  ·  "+item.name,String.format(Locale.US,"%.1f MB/s",rate/1000000.0),remaining==0&&done<count?UiText.t(157):eta(remaining,rate,elapsed),TransferStats.size(moved),all);status.setText(done+" / "+count+receiveText(" فایل تەواو بووە"," files completed"," ملف مكتمل"));for(int kind=0;kind<categoryProgress.length;kind++)if(categoryProgress[kind]!=null)categoryProgress[kind].setText(categoryProgressText(kind,done,currentKind));});
+     }
+     interface Work{void run()throws Exception;}
+     private void job(boolean receiving,Work work){
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/NearbyUi.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/NearbyUi.java
+@@ -33,7 +33,7 @@
+     private static TextView text(Activity activity, String value, boolean strong) {
+         TextView view = new TextView(activity);
+         view.setText(value);
+-        view.setTextColor(Color.rgb(30, 44, 65));
++        view.setTextColor(CloneDesign.INK);
+         view.setTextSize(strong ? 17 : 14);
+         view.setPadding(0, dp(activity, 5), 0, dp(activity, 5));
+         if (strong) view.setTypeface(null, Typeface.BOLD);
+@@ -57,7 +57,7 @@
+                 "For automatic connection, enable Wi-Fi and Bluetooth and approve the connection request. No Wi-Fi password needs to be typed.",
+                 "للاتصال التلقائي، فعّل Wi-Fi وBluetooth ووافق على طلب الاتصال. لا حاجة لكتابة كلمة مرور Wi-Fi."), false));
+         Button visible = new Button(activity);
+-        visible.setAllCaps(false);
++        CloneDesign.button(visible,false);
+         visible.setText(words("دووبارە مۆبایلەکە دیار بکە", "Make this phone visible again", "اجعل هذا الهاتف مرئيًا مجددًا"));
+         visible.setOnClickListener(v -> NearbyBluetooth.visibleFor(activity));
+         card.addView(visible);
+@@ -71,7 +71,7 @@
+                 "Enable Wi-Fi and Bluetooth on both phones. Allow the new phone to be visible, then select it here.",
+                 "فعّل Wi-Fi وBluetooth على الهاتفين. اسمح بظهور الهاتف الجديد، ثم اختره هنا."), false));
+         Button manual = new Button(activity);
+-        manual.setAllCaps(false);
++        CloneDesign.button(manual,false);
+         manual.setText(words("پەیوەندی دەستی بە ناوی هۆتسپۆت (بەبێ نووسینی ڕەمز)",
+                 "Connect manually by hotspot name (no password entry)",
+                 "اتصال يدوي باسم نقطة الاتصال (دون كتابة كلمة مرور)"));
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/ScanActivity.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/ScanActivity.java
+@@ -4,6 +4,8 @@
+ import android.os.Bundle;
+ import android.content.Intent;
+ import android.graphics.Color;
++import android.graphics.Canvas;
++import android.graphics.Paint;
+ import android.hardware.Camera;
+ import android.view.*;
+ import android.widget.*;
+@@ -24,11 +26,12 @@
+     @Override public void onCreate(Bundle state) {
+         super.onCreate(state);UiText.init(this);
+         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+-        LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setLayoutDirection(UiText.direction());root.setBackgroundColor(Color.rgb(15,25,42));
++        getWindow().setStatusBarColor(CloneDesign.NAVY);getWindow().setNavigationBarColor(CloneDesign.NAVY);getWindow().getDecorView().setSystemUiVisibility(0);
++        LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setLayoutDirection(UiText.direction());root.setBackgroundColor(CloneDesign.NAVY);
+         hint=new TextView(this);hint.setText(UiText.t(221));hint.setTextColor(Color.WHITE);hint.setTextSize(20);hint.setGravity(Gravity.CENTER);hint.setPadding(24,40,24,24);root.addView(hint);
+-        preview=new SurfaceView(this);root.addView(preview,new LinearLayout.LayoutParams(-1,0,1));preview.getHolder().addCallback(this);
++        FrameLayout cameraFrame=new FrameLayout(this);root.addView(cameraFrame,new LinearLayout.LayoutParams(-1,0,1));preview=new SurfaceView(this);cameraFrame.addView(preview,new FrameLayout.LayoutParams(-1,-1));cameraFrame.addView(new Finder(this),new FrameLayout.LayoutParams(-1,-1));preview.getHolder().addCallback(this);
+         TextView note=new TextView(this);note.setText(UiText.t(222));note.setTextColor(Color.WHITE);note.setGravity(Gravity.CENTER);note.setPadding(20,24,20,24);root.addView(note);
+-        Button back=new Button(this);back.setText(UiText.t(29));back.setOnClickListener(v->finish());root.addView(back);setContentView(root);
++        Button back=new Button(this);CloneDesign.button(back,true);back.setText(UiText.t(29));back.setOnClickListener(v->finish());LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,-2);bp.setMargins(CloneDesign.dp(this,20),0,CloneDesign.dp(this,20),CloneDesign.dp(this,16));root.addView(back,bp);setContentView(root);
+     }
+     @Override protected void onResume(){super.onResume();active=true;if(preview.getHolder().getSurface().isValid())open();}
+     @Override protected void onPause(){active=false;release();super.onPause();}
+@@ -79,4 +82,10 @@
+         }catch(Exception ignored){}finally{decoding.set(false);}
+     }
+     private void release(){if(camera!=null){try{camera.setPreviewCallback(null);camera.stopPreview();camera.release();}catch(Exception ignored){}camera=null;}}
++    private static final class Finder extends View {
++        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
++        Finder(android.content.Context c){super(c);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
++        @Override protected void onDraw(Canvas c){float size=Math.min(getWidth()*.77f,getHeight()*.72f),left=(getWidth()-size)/2,top=(getHeight()-size)/2,right=left+size,bottom=top+size;paint.setColor(0x77101f40);c.drawRect(0,0,getWidth(),top,paint);c.drawRect(0,bottom,getWidth(),getHeight(),paint);c.drawRect(0,top,left,bottom,paint);c.drawRect(right,top,getWidth(),bottom,paint);paint.setColor(CloneDesign.TEAL);paint.setStrokeWidth(CloneDesign.dp(getContext(),4));paint.setStrokeCap(Paint.Cap.ROUND);float arm=size*.13f;for(int x=0;x<2;x++)for(int y=0;y<2;y++){float px=x==0?left:right,py=y==0?top:bottom;c.drawLine(px,py,px+(x==0?arm:-arm),py,paint);c.drawLine(px,py,px,py+(y==0?arm:-arm),paint);}}
++    }
++
+ }
+--- a/ClonePhone/app/src/main/java/com/abdulla/clonephone/SendFilePicker.java
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/SendFilePicker.java
+@@ -34,7 +34,7 @@
+     private static final class FolderRow {final String folder;final List<Entry> entries;FolderRow(String f,List<Entry> e){folder=f;entries=e;}}
+     private static final class StorageFolder {final File file;StorageFolder(File f){file=f;}}
+     private static final class ContactHeading {final String letter;ContactHeading(String s){letter=s;}}
+-    private static final int INK=0xff25262b,DIM=0xff898b91,BLUE=0xff3266df,BG=0xfffafafa;
++    private static final int INK=CloneDesign.INK,DIM=CloneDesign.MUTED,BLUE=CloneDesign.BLUE,BG=CloneDesign.BG;
+     private static final ThreadFactory BACKGROUND_THREADS=r->new Thread(()->{
+         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);r.run();
+     },"rebar-picker");
+@@ -98,29 +98,29 @@
+         super(a);activity=a;actions=callback;
+         for(Entry e:initial)selected.put(e.key(),e);
+         setOrientation(VERTICAL);setLayoutDirection(LAYOUT_DIRECTION_LTR);setBackgroundColor(BG);
+-        setPadding(dp(14),0,dp(14),0);
++        setPadding(dp(18),dp(8),dp(18),0);
+         LinearLayout header=new LinearLayout(a);header.setGravity(Gravity.CENTER_VERTICAL);
+         addView(header,new LayoutParams(-1,dp(60)));
+         TextView back=text("←",28,INK,false);back.setGravity(Gravity.CENTER);back.setContentDescription("Back");
+         header.addView(back,new LayoutParams(dp(44),-1));back.setOnClickListener(v->{if(!back())actions.back();});
+-        TextView title=text("Select Files",21,INK,true);header.addView(title,new LayoutParams(0,-2,1));
++        TextView title=text(CloneDesign.words("هەڵبژاردنی فایل","Select files","اختيار الملفات"),23,INK,true);header.addView(title,new LayoutParams(0,-2,1));
+         uninstall=new ImageButton(a);uninstall.setImageResource(android.R.drawable.ic_menu_delete);uninstall.setBackgroundColor(Color.TRANSPARENT);uninstall.setColorFilter(0xffc44747);uninstall.setContentDescription("Uninstall selected apps");uninstall.setVisibility(GONE);header.addView(uninstall,new LayoutParams(dp(48),dp(48)));uninstall.setOnClickListener(v->{List<Entry> apps=uninstallSelection();if(!apps.isEmpty())actions.uninstall(apps);});
+         ImageButton find=new ImageButton(a);find.setImageResource(android.R.drawable.ic_menu_search);
+         find.setBackgroundColor(Color.TRANSPARENT);find.setContentDescription("Search files");
+         header.addView(find,new LayoutParams(dp(48),dp(48)));
+-        search=new EditText(a);search.setSingleLine(true);search.setTextSize(16);search.setHint("Search files");
+-        search.setTextColor(INK);search.setHintTextColor(DIM);search.setBackground(shape(0xfff0f0f2,12));
++        search=new EditText(a);search.setSingleLine(true);search.setTextSize(16);search.setHint(CloneDesign.words("گەڕان لە فایلەکان","Search files","البحث في الملفات"));
++        search.setTextColor(INK);search.setHintTextColor(DIM);search.setBackground(CloneDesign.surface(a,Color.WHITE,CloneDesign.LINE,16));
+         search.setPadding(dp(12),0,dp(12),0);search.setVisibility(GONE);addView(search,new LayoutParams(-1,dp(44)));
+         find.setOnClickListener(v->{search.setVisibility(search.getVisibility()==VISIBLE?GONE:VISIBLE);if(search.getVisibility()==VISIBLE){search.requestFocus();((android.view.inputmethod.InputMethodManager)a.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)).showSoftInput(search,0);}else search.setText("");});
+         HorizontalScrollView strip=new HorizontalScrollView(a);tabStrip=strip;strip.setHorizontalScrollBarEnabled(false);
+         LinearLayout tabRow=new LinearLayout(a);strip.addView(tabRow);addView(strip,new LayoutParams(-1,dp(56)));
+-        String[] ids={"contacts","files","videos","apps","photos","audio"},labels={"CONTACTS","FILES","VIDEOS","APPS","PHOTOS","MUSIC"};
++        String[] ids={"contacts","files","videos","apps","photos","audio"},labels={UiText.t(24),UiText.t(26),UiText.t(18),UiText.t(22),UiText.t(16),UiText.t(20)};
+         for(int i=0;i<ids.length;i++){
+-            final String id=ids[i];TextView t=text(labels[i],15,DIM,true);t.setGravity(Gravity.CENTER);
+-            tabRow.addView(t,new LayoutParams(dp(86),-1));tabs.put(id,t);
++            final String id=ids[i];TextView t=text(labels[i],13,DIM,true);t.setGravity(Gravity.CENTER);
++            t.setPadding(dp(12),dp(9),dp(12),dp(9));t.setMinimumHeight(dp(44));LayoutParams tabParams=new LayoutParams(-2,-2);tabParams.setMargins(dp(2),dp(5),dp(2),dp(5));tabRow.addView(t,tabParams);tabs.put(id,t);
+             t.setOnClickListener(v->{if(tab.equals(id))return;tab=id;packages=false;folderFilter=null;fileFilter="";collapsed.clear();load();});
+         }
+-        segments=new LinearLayout(a);segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(shape(0xfff0f0f2,15));
++        segments=new LinearLayout(a);segments.setPadding(dp(4),dp(4),dp(4),dp(4));segments.setBackground(shape(0xffe8edf7,16));
+         LayoutParams segmentParams=new LayoutParams(-1,dp(48));segmentParams.setMargins(0,dp(8),0,dp(14));addView(segments,segmentParams);
+         TextView installed=text("Installed",16,INK,true),notInstalled=text("Not Installed",16,INK,true);
+         for(TextView t:Arrays.asList(installed,notInstalled)){t.setGravity(Gravity.CENTER);segments.addView(t,new LayoutParams(0,-1,1));}
+@@ -164,13 +164,13 @@
+         });
+         LinearLayout footer=new LinearLayout(a);footer.setGravity(Gravity.CENTER_VERTICAL);footer.setPadding(0,dp(10),0,dp(14));footer.setBackgroundColor(BG);
+         addView(footer,new LayoutParams(-1,dp(78)));count=text("",15,INK,true);footer.addView(count,new LayoutParams(0,-2,1));
+-        next=text("NEXT",16,Color.WHITE,true);next.setGravity(Gravity.CENTER);next.setBackground(shape(BLUE,8));
++        next=text(CloneDesign.words("بەردەوام بە","Continue","متابعة"),16,Color.WHITE,true);next.setGravity(Gravity.CENTER);next.setBackground(CloneDesign.press(a,CloneDesign.gradient(a,BLUE,0xff6272f3,16)));
+         footer.addView(next,new LayoutParams(0,dp(48),1));next.setOnClickListener(v->{if(!selected.isEmpty()&&!selectingFolders)actions.next(new ArrayList<>(selected.values()));});
+         search.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int af){}public void afterTextChanged(android.text.Editable e){}public void onTextChanged(CharSequence s,int st,int b,int c){query=s.toString().toLowerCase(Locale.ROOT);rebuild();}});
+         load();
+     }
+     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
+-    private TextView text(String value,int size,int color,boolean bold){TextView t=new TextView(activity);t.setText(value);t.setTextSize(size);t.setTextColor(color);if(bold)t.setTypeface(null,Typeface.BOLD);return t;}
++    private TextView text(String value,int size,int color,boolean bold){return CloneDesign.text(activity,value,size,color,bold);}
+     private GradientDrawable shape(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
+     private boolean media(){return tab.equals("photos")||tab.equals("videos");}
+     private boolean storage(){return tab.equals("files")&&fileFilter.equals("Storage");}
+@@ -178,8 +178,8 @@
+     private void setFolderMode(boolean folders){if(packages==folders)return;packages=folders;folderFilter=null;collapsed.clear();if(tab.equals("apps"))load();else rebuild();}
+     private void updateSegments(){
+         segments.setVisibility(tab.equals("apps")||folderCapable()?VISIBLE:GONE);
+-        ((TextView)segments.getChildAt(0)).setText(tab.equals("apps")?"Installed":tab.equals("files")?"Files":"Recent");
+-        ((TextView)segments.getChildAt(1)).setText(tab.equals("apps")?"Not Installed":"Folders");
++        ((TextView)segments.getChildAt(0)).setText(tab.equals("apps")?CloneDesign.words("دامەزراو","Installed","المثبتة"):tab.equals("files")?UiText.t(26):CloneDesign.words("نوێترین","Recent","الأخيرة"));
++        ((TextView)segments.getChildAt(1)).setText(tab.equals("apps")?CloneDesign.words("دانەمەزراو","Not installed","غير المثبتة"):CloneDesign.words("بوخچەکان","Folders","المجلدات"));
+         for(int i=0;i<2;i++)segments.getChildAt(i).setBackground(shape((i==1)==packages?Color.WHITE:Color.TRANSPARENT,12));
+     }
+     private String folderLabel(String folder){String path=folder.endsWith("/")?folder.substring(0,folder.length()-1):folder;int slash=path.lastIndexOf('/');return path.isEmpty()?"Other":path.substring(slash+1);}
+@@ -281,7 +281,7 @@
+     }
+     private int fileCount(String filter){int result=0;for(Entry e:entries)if(PickerFiles.matches(e.name,e.mime,e.size,e.path,filter))result++;return result;}
+     private void openFileCategory(String category){fileFilter=category;packages=false;folderFilter=null;if(category.equals("Storage"))storageDirectory=storageRoot;collapsed.clear();load();}
+-    private LinearLayout hubCard(LinearLayout parent){LinearLayout card=new LinearLayout(activity);card.setOrientation(VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));card.setBackground(shape(0xfff2f2f2,16));LayoutParams params=new LayoutParams(-1,-2);params.setMargins(0,0,0,dp(12));parent.addView(card,params);return card;}
++    private LinearLayout hubCard(LinearLayout parent){LinearLayout card=new LinearLayout(activity);card.setOrientation(VERTICAL);card.setPadding(dp(16),dp(16),dp(16),dp(16));card.setBackground(CloneDesign.surface(activity,Color.WHITE,CloneDesign.LINE,20));LayoutParams params=new LayoutParams(-1,-2);params.setMargins(0,0,0,dp(12));parent.addView(card,params);return card;}
+     private TextView hubIcon(String glyph,int color,int size){TextView icon=text(glyph,22,Color.WHITE,true);icon.setGravity(Gravity.CENTER);icon.setBackground(shape(color,8));icon.setMinWidth(dp(size));icon.setMinHeight(dp(size));return icon;}
+     private View fileHub(){
+         LinearLayout hub=new LinearLayout(activity);hub.setOrientation(VERTICAL);hub.setPadding(dp(2),dp(10),dp(2),dp(4));
+@@ -321,7 +321,7 @@
+     private void checkFolderSelection(int token)throws IOException{if(closed||token!=folderGeneration||Thread.currentThread().isInterrupted())throw new IOException("Cancelled");}
+     private void updateSelection(){
+         uninstall.setVisibility(tab.equals("apps")&&!packages&&!uninstallSelection().isEmpty()?VISIBLE:GONE);
+-        count.setText(selectingFolders?"Selecting files… Cancel":selected.size()+" item(s) selected");
++        count.setText(selectingFolders?CloneDesign.words("هەڵبژاردنی فایل… ڕاگرتن","Selecting files… Cancel","اختيار الملفات… إلغاء"):selected.size()+CloneDesign.words(" دانە هەڵبژێردراوە"," items selected"," عنصر محدد"));
+         count.setTextColor(selectingFolders?BLUE:INK);
+         count.setOnClickListener(selectingFolders?v->{++folderGeneration;if(folderTask!=null)folderTask.cancel(true);selectingFolders=false;rebuild();}:null);
+         next.setEnabled(!selected.isEmpty()&&!selectingFolders);next.setAlpha(next.isEnabled()?1f:.55f);
+@@ -452,7 +452,7 @@
+         final int version=++generation;final String type=tab,category=fileFilter;final boolean apk=packages;final File directory=storageDirectory;
+         if(loadTask!=null)loadTask.cancel(true);cancelQuery();
+         final android.os.CancellationSignal cancellation=new android.os.CancellationSignal();queryCancellation=cancellation;
+-        for(Map.Entry<String,TextView> t:tabs.entrySet()){boolean active=t.getKey().equals(tab);t.getValue().setTextColor(active?BLUE:DIM);t.getValue().setBackground(active?underline():null);}
++        for(Map.Entry<String,TextView> t:tabs.entrySet()){boolean active=t.getKey().equals(tab);t.getValue().setTextColor(active?BLUE:DIM);t.getValue().setBackground(CloneDesign.surface(activity,active?CloneDesign.PALE:Color.WHITE,active?0xffccd4ff:CloneDesign.LINE,14));}
+         tabStrip.post(()->{if(!closed&&generation==version)tabStrip.smoothScrollTo(Math.max(0,tabs.get(type).getLeft()-dp(86)),0);});
+         clearThumbnails();updateSegments();entries.clear();storageFolders.clear();rows.clear();shownEntries=Collections.emptyList();groupedEntries=Collections.emptyMap();adapter.notifyDataSetChanged();loadMessage="";loadFailed=false;restrictedAccess=false;empty.setOnClickListener(null);
+         if(documentCacheAccess!=fileAccess()){documentCache.clear();documentCacheAccess=fileAccess();}
+--- /dev/null
++++ b/ClonePhone/app/src/main/java/com/abdulla/clonephone/TransferDashboard.java
+@@ -0,0 +1,35 @@
++package com.abdulla.clonephone;
++
++import android.content.Context;
++import android.graphics.*;
++import android.view.*;
++import android.widget.*;
++
++/** Displays measured transfer progress only; estimates are supplied by the transport. */
++final class TransferDashboard extends LinearLayout {
++    private final Ring ring;private final TextView percent,speed,remaining,moved,total,file;
++    TransferDashboard(Context c){
++        super(c);setOrientation(VERTICAL);setLayoutDirection(UiText.direction());
++        LinearLayout hero=new LinearLayout(c);hero.setOrientation(VERTICAL);hero.setGravity(Gravity.CENTER);hero.setPadding(dp(20),dp(18),dp(20),dp(20));hero.setBackground(CloneDesign.gradient(c,CloneDesign.NAVY,0xff243d79,28));addView(hero,new LayoutParams(-1,-2));
++        FrameLayout gauge=new FrameLayout(c);hero.addView(gauge,new LayoutParams(dp(204),dp(204)));ring=new Ring(c);gauge.addView(ring,new FrameLayout.LayoutParams(-1,-1));
++        LinearLayout center=new LinearLayout(c);center.setOrientation(VERTICAL);center.setGravity(Gravity.CENTER);gauge.addView(center,new FrameLayout.LayoutParams(-1,-1));percent=CloneDesign.text(c,"0.0%",40,Color.WHITE,true);percent.setTextDirection(View.TEXT_DIRECTION_LTR);percent.setGravity(Gravity.CENTER);center.addView(percent);
++        TextView caption=CloneDesign.text(c,CloneDesign.words("گواستراوەتەوە","Transferred","تم النقل"),12,0xffb7c6e6,false);caption.setGravity(Gravity.CENTER);center.addView(caption);
++        file=CloneDesign.text(c,UiText.t(119),13,0xffd3def4,false);file.setGravity(Gravity.CENTER);file.setMaxLines(2);file.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);file.setPadding(0,dp(6),0,0);hero.addView(file,new LayoutParams(-1,-2));
++        LinearLayout first=row(c),second=row(c);speed=metric(c,first,CloneDesign.words("خێرایی","Speed","السرعة"));remaining=metric(c,first,CloneDesign.words("کاتی ماوە","Time remaining","الوقت المتبقي"));moved=metric(c,second,CloneDesign.words("گواستراوە","Transferred","المنقول"));total=metric(c,second,CloneDesign.words("کۆی داتا","Total data","إجمالي البيانات"));
++        setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
++    }
++    private int dp(int n){return CloneDesign.dp(getContext(),n);}
++    private LinearLayout row(Context c){LinearLayout r=new LinearLayout(c);LayoutParams lp=new LayoutParams(-1,-2);lp.topMargin=dp(10);addView(r,lp);return r;}
++    private TextView metric(Context c,LinearLayout row,String title){
++        LinearLayout card=new LinearLayout(c);card.setOrientation(VERTICAL);card.setPadding(dp(15),dp(15),dp(15),dp(15));card.setBackground(CloneDesign.surface(c,Color.WHITE,CloneDesign.LINE,20));LayoutParams lp=new LayoutParams(0,-2,1);lp.setMargins(dp(3),0,dp(3),0);row.addView(card,lp);
++        card.addView(CloneDesign.text(c,title,12,CloneDesign.MUTED,false));TextView value=CloneDesign.text(c,"—",20,CloneDesign.INK,true);value.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);value.setPadding(0,dp(5),0,0);value.setMaxLines(2);card.addView(value,new LayoutParams(-1,-2));return value;
++    }
++    void update(int tenths,String shown,String filename,String speedText,String etaText,String movedText,String totalText){
++        ring.progress=Math.max(0,Math.min(1000,tenths));ring.invalidate();percent.setText(shown);file.setText(filename);speed.setText(speedText);remaining.setText(etaText);moved.setText(movedText);total.setText(totalText);
++    }
++    private static final class Ring extends View {
++        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);int progress;
++        Ring(Context c){super(c);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
++        @Override protected void onDraw(Canvas c){float inset=CloneDesign.dp(getContext(),13);RectF r=new RectF(inset,inset,getWidth()-inset,getHeight()-inset);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(CloneDesign.dp(getContext(),9));p.setStrokeCap(Paint.Cap.ROUND);p.setShader(null);p.setColor(0xff3a507e);c.drawArc(r,0,360,false,p);if(progress>0){p.setShader(new SweepGradient(getWidth()/2f,getHeight()/2f,new int[]{CloneDesign.BLUE,CloneDesign.TEAL,CloneDesign.TEAL},null));c.save();c.rotate(-90,getWidth()/2f,getHeight()/2f);c.drawArc(r,0,progress*.36f,false,p);c.restore();p.setShader(null);}}
++    }
++}
+--- a/ClonePhone/app/src/main/res/values/styles.xml
++++ b/ClonePhone/app/src/main/res/values/styles.xml
+@@ -1,10 +1,11 @@
+ <resources>
+-    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
++    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+         <item name="android:fontFamily">sans</item>
+-        <item name="android:colorAccent">#00DAFF</item>
+-        <item name="android:windowLightStatusBar">false</item>
+-        <item name="android:statusBarColor">#050B12</item>
+-        <item name="android:navigationBarColor">#050B12</item>
++        <item name="android:colorAccent">#4559ED</item>
++        <item name="android:windowLightStatusBar">true</item>
++        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
++        <item name="android:statusBarColor">#F4F6FC</item>
++        <item name="android:navigationBarColor">#F4F6FC</item>
+         <item name="android:windowActionModeOverlay">true</item>
+         <item name="android:windowNoTitle">true</item>
+     </style>
