@@ -38,7 +38,7 @@ jobs:
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
           printf 'no\n' | avdmanager create avd --name design --package "system-images;android-35;google_apis;x86_64" --device pixel_6 --force
           "$ANDROID_HOME/emulator/emulator" -avd design -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-metrics > /tmp/design-emulator.log 2>&1 &
-          adb wait-for-device
+          timeout 180 adb wait-for-device || { cat /tmp/design-emulator.log; exit 1; }
           timeout 240 bash -c 'until [ "$(adb shell getprop sys.boot_completed | tr -d "\r")" = "1" ]; do sleep 2; done'
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
@@ -46,12 +46,13 @@ jobs:
           adb shell wm size 1080x2400
           adb shell wm density 420
           adb install -r ClonePhone/app/build/outputs/apk/debug/app-debug.apk
+          adb shell pm grant com.abdulla.clonephone android.permission.CAMERA
       - name: Capture real native screens
         run: |
           set -euo pipefail
           mkdir -p previews
           for lang in ckb en; do
-            for screen in home roles usb selection transfer; do
+            for screen in home roles usb selection transfer picker scan installer; do
               adb shell am force-stop com.abdulla.clonephone
               adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen "$screen" --es language "$lang"
               sleep 2
@@ -65,6 +66,12 @@ jobs:
           adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen selection --es language ckb
           sleep 2
           adb exec-out screencap -p > previews/selection-small-large-font.png
+          adb shell am force-stop com.abdulla.clonephone
+          adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen transfer --es language ckb
+          sleep 2
+          adb exec-out screencap -p > previews/transfer-small-large-font.png
+          adb shell uiautomator dump /sdcard/window.xml
+          adb pull /sdcard/window.xml previews/small-window.xml
           adb logcat -d -s AndroidRuntime > previews/android-runtime.log
           if grep -q 'FATAL EXCEPTION' previews/android-runtime.log; then cat previews/android-runtime.log; exit 1; fi
       - name: Keep native previews
