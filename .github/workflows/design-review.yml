@@ -56,26 +56,13 @@ jobs:
           set -euo pipefail
           mkdir -p previews
           for lang in ckb en; do
-            for screen in home selection installer; do
+            for screen in home usb; do
               adb shell am force-stop com.abdulla.clonephone
               adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen "$screen" --es language "$lang"
               sleep 2
               adb exec-out screencap -p > "previews/$screen-$lang.png"
             done
           done
-          adb shell settings put system font_scale 1.3
-          adb shell wm size 720x1280
-          adb shell wm density 320
-          adb shell am force-stop com.abdulla.clonephone
-          adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen selection --es language ckb
-          sleep 2
-          adb exec-out screencap -p > previews/selection-small-large-font.png
-          adb shell am force-stop com.abdulla.clonephone
-          adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen transfer --es language ckb
-          sleep 2
-          adb exec-out screencap -p > previews/transfer-small-large-font.png
-          adb shell uiautomator dump /sdcard/window.xml
-          adb pull /sdcard/window.xml previews/small-window.xml
           adb logcat -d -s AndroidRuntime > previews/android-runtime.log
           if grep -q 'FATAL EXCEPTION' previews/android-runtime.log; then cat previews/android-runtime.log; exit 1; fi
       - name: Keep native previews

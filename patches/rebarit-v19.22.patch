@@ -400,7 +400,19 @@
          LinearLayout brandBox=new LinearLayout(this);brandBox.setOrientation(LinearLayout.VERTICAL);brandBox.setGravity(Gravity.CENTER);
          TextView brand=label(id.equals("home")?"REBARIT CLONE":title,id.equals("home")?18:20,LIGHT,true);brand.setGravity(Gravity.CENTER);brand.setTextDirection(View.TEXT_DIRECTION_LTR);brandBox.addView(brand,new LinearLayout.LayoutParams(-2,-2));
          if(id.equals("home")){TextView version=label("v"+versionName(),10,0xff8ea6b8,false);version.setGravity(Gravity.CENTER);version.setTextDirection(View.TEXT_DIRECTION_LTR);brandBox.addView(version,new LinearLayout.LayoutParams(-2,-2));}
-@@ -422,129 +413,43 @@
+@@ -418,133 +409,55 @@
+     }
+     private void openDownloadCatalog(){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(DOWNLOAD_CATALOG_URL)));}catch(Exception e){toast(UiText.t(297));}}
+     private OnlineUpdate onlineUpdate;
++    @Override public void onWindowFocusChanged(boolean focused){
++        super.onWindowFocusChanged(focused);if(!focused)return;
++        boolean dark="usbRoles".equals(screen);int color=dark?NIGHT:BG;
++        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
++        getWindow().setStatusBarColor(color);getWindow().setNavigationBarColor(color);
++        if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=getWindow().getInsetsController();if(controller!=null){int appearance=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;controller.setSystemBarsAppearance(dark?0:appearance,appearance);}}
++        else getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
++    }
+     @Override protected void onResume(){super.onResume();if(onlineUpdate!=null)onlineUpdate.resume();}
      @Override protected void onPause(){if(onlineUpdate!=null)onlineUpdate.pause();super.onPause();}
      private void home(){
          if(!busy){stopLink();senderPaired=false;selectedUsbChannel=null;phoneCloneController=false;phoneCloneSource=false;cloneControllerAuthorized=false;restartCloneBand=false;restartReceiveBand=false;}
@@ -566,7 +578,7 @@
      }
  
      private void landingCard(String title,String description,String action,int first,int second,Runnable click){
-@@ -597,34 +502,20 @@
+@@ -597,34 +510,20 @@
              default:return value;
          }
      }
@@ -610,7 +622,7 @@
      }
      private void usbRoles(){
          if(busy)return;
-@@ -641,7 +532,7 @@
+@@ -641,7 +540,7 @@
          text(receiveText("مۆبایلی نوێ وەرگرە؛ مۆبایلی کۆن نێرەرە. لیستی ئەپەکان تەنها لە وەرگر دەردەکەوێت.","Use the new phone as receiver and the old phone as sender. The app list appears only on the receiver.","اجعل الهاتف الجديد مستقبلاً والقديم مرسلاً. تظهر قائمة التطبيقات على الهاتف المستقبل فقط."),12,0xff8ea6b8,false).setGravity(Gravity.CENTER);
      }
      private void darkRole(String title,String description,String glyph,int accent,Runnable click){
@@ -619,7 +631,7 @@
          LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,0,0,dp(16));body.addView(card,cp);
          TextView icon=label(glyph,30,NIGHT,true);icon.setGravity(Gravity.CENTER);icon.setBackground(box(accent,15));card.addView(icon,new LinearLayout.LayoutParams(dp(50),dp(54)));
          LinearLayout words=new LinearLayout(this);words.setOrientation(1);words.setPadding(dp(16),0,dp(10),0);card.addView(words,new LinearLayout.LayoutParams(0,-2,1));words.addView(label(title,21,LIGHT,true));words.addView(label(description,13,0xffa9bdca,false));card.setFocusable(true);card.setOnClickListener(v->click.run());
-@@ -666,9 +557,8 @@
+@@ -666,9 +565,8 @@
      }
      private void categories(){
          page("categories",UiText.t(14),UiText.t(15),2);
@@ -631,7 +643,7 @@
  
          section(UiText.t(284));
          category("photos",UiText.t(16),UiText.t(17),"▧");
-@@ -703,7 +593,7 @@
+@@ -703,7 +601,7 @@
      private void chooseApps(){if(!busy)openSendPicker();}
      private void openSendPicker(){
          closeGallery();screen="sendPicker";
@@ -640,7 +652,7 @@
          getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|(Build.VERSION.SDK_INT>=26?View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR:0));
          List<SendFilePicker.Entry> initial=new ArrayList<>();
          for(Map.Entry<String,List<Item>> group:groups.entrySet())if(!group.getKey().equals("apps")&&!(group.getKey().equals("contacts")&&!pickerContacts.isEmpty()))for(Item i:group.getValue()){
-@@ -1544,9 +1434,9 @@
+@@ -1544,9 +1442,9 @@
          if(phoneCloneSource||phoneCloneController)clonePage("transfer",sending?UiText.t(114):UiText.t(115),"داتاکان بە پەیوەندیی ڕاستەوخۆ دەگوازرێنەوە",3);
          else page("transfer",sending?UiText.t(114):UiText.t(115),UiText.t(116),3);
  
@@ -653,7 +665,7 @@
          Arrays.fill(categoryProgress,null);
          if(transferStats!=null){
              for(int kind:new int[]{0,1,4,8,3,2,5,6,7})if(transferStats.total(kind)>0){categoryProgress[kind]=summaryCard(categoryProgressText(kind,0,-1));categoryProgress[kind].setTextSize(14);gap(8);}
-@@ -1557,7 +1447,7 @@
+@@ -1557,7 +1455,7 @@
      private void resultPage(boolean success,String message,boolean receiving){
          transferNotification(success?UiText.t(125):UiText.t(126),0,true);
          if(phoneCloneSource||phoneCloneController)clonePage("result",success?UiText.t(125):UiText.t(126),message,0);else page("result",success?UiText.t(125):UiText.t(126),message,0);gap(24);
@@ -662,7 +674,7 @@
          text(completed+UiText.t(127),22,INK,true).setGravity(Gravity.CENTER);note(UiText.t(128));
          if(transferStats!=null){
              summaryCard(UiText.t(253)+(transferStats.total(0)-transferStats.remaining(0,completed)));gap(8);
-@@ -1637,7 +1527,7 @@
+@@ -1637,7 +1535,7 @@
          String info=UiText.t(144)+all+UiText.t(145)+TransferStats.size(moved)+
              UiText.t(155)+String.format(Locale.US,"%.1f MB/s",rate/1000000.0)+UiText.t(156)+(remaining==0&&done<count?UiText.t(157):eta(remaining,rate,elapsed));
          final String display=info;final int currentKind=force?-1:TransferStats.kind(item.name,item.mime);
@@ -881,7 +893,7 @@
 +}
 --- a/ClonePhone/app/src/main/res/values/styles.xml
 +++ b/ClonePhone/app/src/main/res/values/styles.xml
-@@ -1,10 +1,10 @@
+@@ -1,10 +1,11 @@
  <resources>
 -    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
 +    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
@@ -892,6 +904,7 @@
 -        <item name="android:navigationBarColor">#050B12</item>
 +        <item name="android:colorAccent">#4559ED</item>
 +        <item name="android:windowLightStatusBar">true</item>
++        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
 +        <item name="android:statusBarColor">#F4F6FC</item>
 +        <item name="android:navigationBarColor">#F4F6FC</item>
          <item name="android:windowActionModeOverlay">true</item>
