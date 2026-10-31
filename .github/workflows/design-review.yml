@@ -56,7 +56,7 @@ jobs:
           set -euo pipefail
           mkdir -p previews
           for lang in ckb en; do
-            for screen in home roles usb selection transfer picker scan installer; do
+            for screen in home selection installer; do
               adb shell am force-stop com.abdulla.clonephone
               adb shell am start -W -n com.abdulla.clonephone/.DesignPreviewActivity --es screen "$screen" --es language "$lang"
               sleep 2
